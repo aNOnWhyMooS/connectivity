@@ -92,6 +92,8 @@ All our finetuned models, along with MNLI models finetuned by [McCoy et. al. 201
 
 Additionally, the repository of each model contains the sample-wise logits, predictions and labels for all the evaluation datasets used for that model in json files.
 
+All the following sections can be run in a Colab Notebook, and can be seen [here](notebooks/interpol_eval_plot.ipynb).
+
 ## Evaluation
 
 To evaluate a model, run:
@@ -230,3 +232,7 @@ python3 dynamics.py --eval_metric f1 --interpol_log_dirs ${BASE_DIR}15000steps/ 
 ```
 
 The above command will plot the change in cluster membership with training. For complete details run the script with ``-h`` flag, as before.
+
+## Acknowledgements
+
+Some of the code in [``src/constellations/simplexes``](src/constellations/simplexes/) is borrowed from [this work](https://github.com/g-benton/loss-surface-simplexes). And the google script has been modified from [this repo](https://github.com/google-research/bert/tree/88a817c37f788702a363ff935fd173b6dc6ac0d6).
