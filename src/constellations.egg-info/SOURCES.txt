@@ -1,0 +1,5 @@
+setup.py
+constellations.egg-info/PKG-INFO
+constellations.egg-info/SOURCES.txt
+constellations.egg-info/dependency_links.txt
+constellations.egg-info/top_level.txt

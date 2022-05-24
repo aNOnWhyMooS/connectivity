@@ -1,0 +1,15 @@
+axes.titlesize : 30
+axes.labelsize : 30
+lines.linewidth : 5
+lines.markersize : 10
+xtick.labelsize : 21
+ytick.labelsize : 21
+axes.spines.bottom : True
+axes.spines.left : True
+axes.spines.right : True
+axes.spines.top : True
+axes.grid : False
+legend.fontsize : 24
+figure.autolayout: True
+font.family: Times New Roman
+pgf.texsystem: pdflatex
