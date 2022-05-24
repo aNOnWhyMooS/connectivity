@@ -92,7 +92,7 @@ All our finetuned models, along with MNLI models finetuned by [McCoy et. al. 201
 
 Additionally, the repository of each model contains the sample-wise logits, predictions and labels for all the evaluation datasets used for that model in json files.
 
-All the following sections can be run in a Colab Notebook, and can be seen [here](notebooks/interpol_eval_plot.ipynb).
+We provide a [Colab Notebook](notebooks/interpol_eval_plot.ipynb) which can be used for running all the following sections.
 
 ## Evaluation
 
