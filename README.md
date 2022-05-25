@@ -20,6 +20,8 @@ bash get_paws.sh
 
 ## Training
 
+### QQP
+
 To fine-tune a QQP model, using the original script, we run the following commands.
 
 First, we fetch the pre-trained weights:
@@ -83,6 +85,27 @@ python3 convert_to_pt.py $MODEL_NUM <hf_auth_token>
 ```
 
 where ``<hf_auth_token>`` is a [HuggingFace AuthToken](https://huggingface.co/docs/hub/security) with ``WRITE`` permissions.
+
+### CoLA
+
+The following command can be used to train the CoLA models, using [this](https://github.com/huggingface/transformers/blob/master/examples/flax/text-classification/run_flax_glue.py) HuggingFace script.
+
+```bash
+cd cola/
+export TRAINING_SEED=0
+python run_flax_glue.py \
+        --model_name_or_path bert-base-uncased\
+        --task_name cola \
+        --max_seq_length 512 \
+        --learning_rate 2e-5 \
+        --num_train_epochs 6 \
+        --per_device_train_batch_size 32 \
+        --eval_steps 100 --save_steps 100\
+        --output_dir bert-base-uncased_cola_ft-$TRAINING_SEED/ \
+        --seed $TRAINING_SEED --push_to_hub --hub_token <hf_auth_token>
+```
+
+Each finetuning run must be given a different seed.
 
 All the following steps assume that the finetuned models are available on [HuggingFace-Hub](https://huggingface.co/models).
 
