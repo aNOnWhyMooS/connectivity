@@ -1,0 +1,8 @@
+*/.ipynb_checkpoints/*
+*.pyc
+*__pycache__*
+*.err
+*/saved-outputs/*
+*/wandb/*
+*/*.egg-info
+*.pdf
