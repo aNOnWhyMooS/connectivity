@@ -113,7 +113,15 @@ All the following steps assume that the finetuned models are available on [Huggi
 
 All our finetuned models, along with MNLI models finetuned by [McCoy et. al. 2019](https://arxiv.org/abs/1911.02969), are available on HuggingFace-Hub [here](https://huggingface.co/connectivity).
 
-Additionally, the repository of each model contains the sample-wise logits, predictions and labels for all the evaluation datasets used for that model in json files.
+Additionally, the repository of each model contains the sample-wise logits, predictions and labels for all the evaluation datasets used for that model in json files. 
+
+The models in smaller cluster for the datasets considered are mentioned below, rest of the models belong in the larger cluster. Note that these are final cluster memberships, after 3 epochs of training.
+
+| Dataset |  Models seeds in the smaller, linearly disconnected cluster |
+|---------|-------------------------------------------------------------|
+| MNLI    |  '15', '25', '26', '42', '44', '46', '56', '61', '63', '70', '73', '89' |
+| QQP     |  '7', '11', '17', '22', '31', '33', '53', '61', '63', '68', '69', '94'  |
+| CoLA    |   '23' |
 
 We provide a [Colab Notebook](notebooks/interpol_eval_plot.ipynb) which can be used for running all the following sections.
 
