@@ -218,7 +218,7 @@ The ``--remove_plains`` option omits plotting interpolations between intermediat
 ### 2-D interpolations
 
 ```bash
-cd /content/connectivity_gems/plot/
+cd /content/connectivity/plot/
 export BASE_DIR=../logs/interpolation_logs/interpol_2d/short_range
 python3 same_z_scale_plot.py --surface_pkl_files $BASE_DIR/around_peaks/mnli_test/mnli_test_99_8_37_2_loss_surface.pkl\
                                                  $BASE_DIR/around_valleys/mnli_test/mnli_test_44_73_89_2_loss_surface.pkl\
