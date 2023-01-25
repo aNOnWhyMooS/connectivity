@@ -1,6 +1,6 @@
 # Linear Connectivity Reveals Generalization Strategies
 
-This repository is the official implementation of [Linear Connectivity Reveals Generalization Strategies](https://arxiv.org/abs/xxxx.xxxx).
+This repository is the official implementation of [Linear Connectivity Reveals Generalization Strategies](https://arxiv.org/abs/2205.12411).
 
 ![Interpolation curves in HANS and MNLI validation loss surface](Figures/MnliHans-Lo-LogsNliFeatherBertsHansEvalBert-PerfMetric%3DLexicalOverlapOnlynonentailing_losses.png)
 
