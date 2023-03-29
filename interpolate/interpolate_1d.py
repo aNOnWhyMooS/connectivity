@@ -81,19 +81,19 @@ def main(args):
         metric = load_metric("accuracy", experiment_id=args.experiment_id)
     
     w1 = get_sequence_classification_model(
-            args.base_models_prefix + args.indices[0], from_flax=not is_feather_bert,
+            args.base_models_prefix + args.indices[0], from_flax=(args.from_model_type=="flax"),
             num_steps=args.num_steps, local_dir=(None if args.local_dir_prefix is None
                                                       else args.local_dir_prefix + args.indices[0]),
         ).state_dict()
     
     model = get_sequence_classification_model(
-            args.base_models_prefix + args.indices[0], from_flax=not is_feather_bert,
+            args.base_models_prefix + args.indices[0], from_flax=(args.from_model_type=="flax"),
             num_steps=args.num_steps, local_dir=(None if args.local_dir_prefix is None
                                                       else args.local_dir_prefix + args.indices[0]),
         )
     
     w2 = get_sequence_classification_model(
-            args.base_models_prefix  + args.indices[1], from_flax=not is_feather_bert,
+            args.base_models_prefix  + args.indices[1], from_flax=(args.from_model_type=="flax"),
             num_steps=args.num_steps, local_dir=(None if args.local_dir_prefix is None
                                                       else args.local_dir_prefix + args.indices[1]),
         ).state_dict()
@@ -235,6 +235,14 @@ if __name__ == '__main__':
         required=True,
     )
     
+    parser.add_argument(
+       "--from_model_type",
+       type=str,
+       choices=["pt", "flax", "tf"],
+       help="Type of model on HF hub",
+       default="flax",
+    )
+
     args = parser.parse_args()
 
     vals_dict = {}

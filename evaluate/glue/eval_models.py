@@ -1,4 +1,4 @@
-import argparse
+import argparse, os
 
 import torch
 from transformers import AutoTokenizer
@@ -46,7 +46,7 @@ def main(args):
                        else args.local_dir_prefix + args.model_name[len(args.base_models_prefix):])
     
     model = get_sequence_classification_model(args.model_name, num_steps=args.num_steps,
-                                              from_flax=not is_feather_bert,
+                                              from_flax=(args.from_model_type=="flax"),
                                               local_dir=local_model_dir).to(device)
 
     if args.dataset=="cola" or args.dataset=="qqp":
@@ -151,7 +151,15 @@ if __name__ == '__main__':
             If not specified commit info will be fetched\
             into dummy directory from huggingface.co/",
     )
-
+    
+    parser.add_argument(
+       "--from_model_type",
+       type=str,
+       choices=["pt", "flax", "tf"],
+       help="Type of model on HF hub",
+       default="flax",
+    )
+    
     args = parser.parse_args()
     
     if args.models is None:
@@ -167,5 +175,14 @@ if __name__ == '__main__':
     for suffix in suffixes:
         args.model_name = args.base_models_prefix+suffix
         print(f"Evaluating model {args.model_name}", flush=True)
-        args.write_file = args.write_file_prefix+suffix+".json"    
-        main(args)
+        args.write_file = args.write_file_prefix+suffix+".json"
+        if os.path.exists(args.write_file):
+            continue
+        try:
+            main(args)
+        except ValueError as e:
+            if "Unable to find any commit with " in str(e):
+                print(e)
+                continue
+            else:
+                raise e
