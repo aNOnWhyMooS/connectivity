@@ -81,6 +81,8 @@ def get_loader(args,
     dataset = dataset.map(lambda *args: {inp_cols[i]: args[i][0] for i in range(len(args))},
                           input_columns=inp_cols)
     
+    print("Check data sample:", dataset[0]) 
+    
     loader = DataLoader(dataset, batch_size=args.batch_size)
     
     class loader_wrapper:

@@ -9,7 +9,7 @@
 nvidia-smi
 
 suffixes=""
-half_saved_models="6 22 36 47 48 49 63"
+half_saved_models="48"
 for i in `seq 0 99`
 do
     is_half_saved=false
@@ -41,6 +41,6 @@ echo $suffixes
 python3 maker_runner.py --all_suffixes $suffixes\
 	                    --base_models_prefix $7 --save_file ../../constellations/logs/$6/$2_interpol@$4steps/interpol_$2_$3.pkl\
 						--dataset $2 --split $3 --num_steps $4 --free_overlays_begin $5 --user_name $1 --log_dir $6/$2_interpol@$4steps\
-						--from_model_type pt
+						--from_model_type $8 --base_model $9
 exit
 "

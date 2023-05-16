@@ -57,10 +57,7 @@ def main(args):
     
     hans_label_dict = {"entailment": 0, "non-entailment": 1}
 
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    except:
-        tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
     
     input_target_loader = get_loader(args, tokenizer, mnli_label_dict)
     

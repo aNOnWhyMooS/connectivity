@@ -1,4 +1,4 @@
-cmd = "\"python3 interpolate_1d.py --base_model bert-base-uncased --from_model_type {8}\
+cmd = "\"python3 interpolate_1d.py --base_model {9} --from_model_type {8}\
     --suffix_pairs {0} --base_models_prefix {1} --save_file {2} --dataset {3} --split {4}\
     --num_steps {5} --experiment_id interpolate_{7}_{3}_{4}_{5}_{6} #--permute_wts\""
 
@@ -89,7 +89,14 @@ def get_parser():
        help="Type of model on HF hub",
        default="flax",
     )
-
+    
+    parser.add_argument(
+        "--base_model",
+        type=str,
+        help="The base model from which the collection of models was finetuned.\
+                Its tokenizer will be used.",
+        required=True,
+    )
     return parser
 
 if __name__=="__main__":
@@ -113,7 +120,8 @@ if __name__=="__main__":
     for i in range(args.total_jobs):
         cmds.append(cmd.format(" ".join([str(elem) for elem in suffix_pairs[0:step_size]]),
                                 args.base_models_prefix, args.save_file[:-4]+str(i)+".pkl", args.dataset, args.split,
-                                str(args.num_steps), str(i), args.base_models_prefix.replace("/", "_"), args.from_model_type))
+                                str(args.num_steps), str(i), args.base_models_prefix.replace("/", "_"), args.from_model_type,
+                                args.base_model))
         
         suffix_pairs = suffix_pairs[step_size:]
         
