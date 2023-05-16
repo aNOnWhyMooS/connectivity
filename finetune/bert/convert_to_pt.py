@@ -3,7 +3,7 @@ import shutil
 import torch
 
 from transformers import BertForSequenceClassification, BertConfig, BertTokenizer
-from huggingface_hub import Repository
+from huggingface_hub import Repository, CommitOperationAdd, HfApi
 
 # Function from: https://github.com/huggingface/transformers/blob/215e0681e4c3f6ade6e219d022a5e640b42fcb76/src/transformers/models/bert/modeling_bert.py#L109
 def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
@@ -84,7 +84,8 @@ def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
 
 if __name__=="__main__":
     model_num, hf_auth_token = sys.argv[1], sys.argv[2]
-
+    
+    api = HfApi()
     config = BertConfig.from_json_file("./uncased_L-12_H-768_A-12/bert_config.json")
     bert = BertForSequenceClassification(config=config)
     
@@ -107,11 +108,13 @@ if __name__=="__main__":
                          commit_message=f"Saving weights and logs of step {steps}",
                          use_auth_token=hf_auth_token)
     
-    
-    repo = Repository(local_dir=hf_repo_dir, use_auth_token=hf_auth_token)
-    
     for file in os.listdir(model_save_dir):
         filepath = os.path.join(model_save_dir, file)
         if os.path.isfile(filepath) and "events.out.tfevents" in filepath:
-            shutil.copy(filepath, hf_repo_dir)
-    repo.push_to_hub(commit_message="Added training logs")
+            api.create_commit(repo_id=f"Jeevesh8/{hf_repo_dir}", 
+                              operations=[CommitOperationAdd(path_in_repo=filepath.split("/")[-1], path_or_fileobj=filepath)],
+                              commit_message="Added training logs",
+                              token=hf_auth_token)
+    
+    print("Deleting folder:", hf_repo_dir)
+    shutil.rmtree(hf_repo_dir)
