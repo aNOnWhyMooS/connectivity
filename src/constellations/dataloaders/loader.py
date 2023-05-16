@@ -72,15 +72,14 @@ def get_loader(args,
         dataset = dataset.map(lambda e: tokenizer(e['premise'], e['hypothesis'], 
                                                 truncation=True, padding='max_length', 
                                                 return_tensors='pt',),)
+    inp_cols = ['input_ids', 'attention_mask']
+    if 'token_type_ids' in dataset[0].keys():
+        inp_cols.append('token_type_ids')      
     
-    dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 
-                                              'token_type_ids', 'label'])
+    dataset.set_format(type='torch', columns=inp_cols+['label'])
     
-    dataset = dataset.map(lambda e1, e2, e3: {'input_ids': e1[0],
-                                              'attention_mask': e2[0],
-                                              'token_type_ids': e3[0]},
-                          input_columns=['input_ids', 'attention_mask',
-                                         'token_type_ids'])
+    dataset = dataset.map(lambda *args: {inp_cols[i]: args[i][0] for i in range(len(args))},
+                          input_columns=inp_cols)
     
     loader = DataLoader(dataset, batch_size=args.batch_size)
     
