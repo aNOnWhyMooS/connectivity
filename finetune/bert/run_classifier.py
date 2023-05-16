@@ -50,7 +50,15 @@ flags.DEFINE_string(
     "output_dir", None,
     "The output directory where the model checkpoints will be written.")
 
+flags.DEFINE_integer(
+    "training_seed", None,
+    "The seed to use for initialization and shuffle")
+
 ## Other parameters
+
+flags.DEFINE_integer(
+    "keep_checkpoint_max", None,
+    "The maximum number of latest checkpoints to save. Saves all, if None.")
 
 flags.DEFINE_string(
     "init_checkpoint", None,
@@ -580,7 +588,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
     d = tf.data.TFRecordDataset(input_file)
     if is_training:
       d = d.repeat()
-      d = d.shuffle(buffer_size=100)
+      d = d.shuffle(buffer_size=100, seed=FLAGS.training_seed)
 
     d = d.apply(
         tf.contrib.data.map_and_batch(
@@ -629,10 +637,10 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
   output_layer = model.get_pooled_output()
 
   hidden_size = output_layer.shape[-1].value
-
+  print("Using seed:", FLAGS.training_seed)
   output_weights = tf.get_variable(
       "output_weights", [num_labels, hidden_size],
-      initializer=tf.truncated_normal_initializer(stddev=0.02))
+      initializer=tf.truncated_normal_initializer(stddev=0.02, seed=FLAGS.training_seed))
 
   output_bias = tf.get_variable(
       "output_bias", [num_labels], initializer=tf.zeros_initializer())
@@ -793,7 +801,7 @@ def input_fn_builder(features, seq_length, is_training, drop_remainder):
 
     if is_training:
       d = d.repeat()
-      d = d.shuffle(buffer_size=100)
+      d = d.shuffle(buffer_size=100, seed=FLAGS.training_seed)
 
     d = d.batch(batch_size=batch_size, drop_remainder=drop_remainder)
     return d
@@ -870,6 +878,7 @@ def main(_):
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+      keep_checkpoint_max=FLAGS.keep_checkpoint_max,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_tpu_cores,
