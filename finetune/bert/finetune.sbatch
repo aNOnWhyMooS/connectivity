@@ -6,7 +6,7 @@
 #SBATCH --nodes=1 --ntasks-per-node=1
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:1
-#SBATCH --time=22:59:59
+#SBATCH --time=1-23:59:59
 #nvidia-smi
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
@@ -19,6 +19,7 @@ singularity exec --nv\
                  --overlay $OVERLAY_FILE $SINGULARITY_IMAGE \
                  /bin/bash -c "
 source /ext3/env.sh
+conda activate tf1py37
 export HF_DATASETS_CACHE=\"/scratch/$USER/.cache/huggingface/datasets\"
 export TRANSFORMERS_CACHE=\"/scratch/$USER/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/$USER/.cache/huggingface/metrics\"
@@ -33,7 +34,7 @@ python3 run_classifier.py \
   --max_seq_length=128 \
   --train_batch_size=32 \
   --learning_rate=2e-5 \
-  --num_train_epochs=3.0 \
-  --output_dir=qqp_save_$SLURM_ARRAY_TASK_ID --save_checkpoints_steps=5000
+  --num_train_epochs=12.0 \
+  --output_dir=qqp_save_$SLURM_ARRAY_TASK_ID --save_checkpoints_steps=20000
 exit
 "
