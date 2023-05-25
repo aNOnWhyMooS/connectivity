@@ -267,3 +267,51 @@ The above command will plot the change in cluster membership with training. For 
 ## Acknowledgements
 
 Some of the code in [``src/constellations/simplexes``](src/constellations/simplexes/) is borrowed from [this work](https://github.com/g-benton/loss-surface-simplexes). And the google script has been modified from [this repo](https://github.com/google-research/bert/tree/88a817c37f788702a363ff935fd173b6dc6ac0d6).
+
+## NYU HPC Specific Instructions
+
+Creating a ``EXT3`` file system:
+
+```bash
+mkdir /scratch/rb5139/mode-conn-0
+cd /scratch/rb5139/mode-conn-0
+cp -rp /scratch/work/public/overlay-fs-ext3/overlay-25GB-500K.ext3.gz ./
+gunzip overlay-25GB-500K.ext3.gz
+mv overlay-25GB-500K.ext3 mode-conn-0.ext3
+```
+
+Install dependencies in the same:
+
+```bash
+singularity exec --overlay ./mode-conn-0.ext3:rw /scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif /bin/bash
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+sh Miniconda3-latest-Linux-x86_64.sh -b -p /ext3/miniconda3
+echo "source /ext3/miniconda3/etc/profile.d/conda.sh
+export PATH=/ext3/miniconda3/bin:$PATH
+export PYTHONPATH=/ext3/miniconda3/bin:$PATH" > /ext3/env.sh
+source /ext3/env.sh
+conda update -n base conda -y
+conda clean --all --yes
+conda install pip
+conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 cudatoolkit=11.3 -c pytorch
+pip3 install jupyter jupyterhub pandas matplotlib scipy scikit-learn scikit-image Pillow
+pip install transformers sentencepiece datasets rouge_score tabulate
+pip install tensorflow tensorboard
+pip install --upgrade pip
+pip install --upgrade "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
+pip install flax optax gpytorch
+pip install GitPython
+conda install -y git-lfs
+python3 -m pip install -e ../connectivity/src/
+pip install getgist
+conda create -n tf1py37 python=3.7
+conda activate tf1py37
+conda install tensorflow-gpu==1.15.0
+pip install numpy==1.19.5
+cd ../connectivity/finetune/bert/
+getgist raffaem download_glue_data.py
+python3 download_glue_data.py --data_dir glue_data --tasks QQP
+wget https://storage.googleapis.com/bert_models/2018_10_18/uncased_L-12_H-768_A-12.zip
+unzip uncased_L-12_H-768_A-12.zip
+rm uncased_L-12_H-768_A-12.zip
+```
