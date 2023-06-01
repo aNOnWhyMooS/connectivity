@@ -12,7 +12,7 @@ mkdir sbatch_outs
 sbatch sbatch_maker.sbatch $USER mnli test 10000 0 NLI/roberta_large Jeevesh8/corr_init_shuff_clipped_warmed_wd0_pnt_01_seq_len_128_roberta-large_mnli_ft_ flax roberta-large
 ```
 
-The above command produces files for running interpolations between models at 10000 training steps, with prefix as ``Jeevesh8/corr_init...``. The type of models to load from hub also needs to be specified, here,``flax``. The last argument is the path within ``logs/NLI/`` where the logs are to be saved. 
+The above command produces files for running interpolations between models at 10000 training steps, with prefix as ``Jeevesh8/corr_init...``. The type of models to load from hub also needs to be specified, here,``flax``. The argument ``NLI/roberta_large`` is the path within ``../../constellations/logs/`` directory where the interpolation logs are to be saved. The last argument is the base model from which all these models were finetuned. The ``0`` after 10000 is a dummy argument, for now.
 
 Next, we move all the generated sbatch files to a directory, and run them.
 ```bash
