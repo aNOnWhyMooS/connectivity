@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, re
 import shutil
 import torch
 
@@ -9,8 +9,6 @@ from huggingface_hub import Repository, CommitOperationAdd, HfApi
 def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
     """Load tf checkpoints in a pytorch model."""
     try:
-        import re
-
         import numpy as np
         import tensorflow as tf
     except ImportError:
@@ -84,23 +82,36 @@ def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
 
 if __name__=="__main__":
     model_num, hf_auth_token = sys.argv[1], sys.argv[2]
-    
+    hf_repo_prefix = sys.argv[3]
+    model_dir_prefix = sys.argv[4]
+ 
     api = HfApi()
     config = BertConfig.from_json_file("./uncased_L-12_H-768_A-12/bert_config.json")
     bert = BertForSequenceClassification(config=config)
     
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     
-    hf_repo_dir = f"bert_ft_qqp-{model_num}"
+    hf_repo = f"{hf_repo_prefix}{model_num}"
+    hf_repo_dir = hf_repo.split("/")[-1]
     assert not os.path.isdir(hf_repo_dir)
 
     tokenizer.push_to_hub(hf_repo_dir, 
                           commit_message="Saving tokenizer",
                           use_auth_token=hf_auth_token)
     
-    model_save_dir = f"qqp_save_{model_num}"
+    model_save_dir = f"{model_dir_prefix}{model_num}"
     
-    for steps in [15000, 20000, 25000, 30000, 34110]:    
+    all_steps = []
+    for f in os.listdir(model_save_dir):
+        if os.path.isfile(os.path.join(model_save_dir, f)):
+            match_obj = re.match(r"model\.ckpt-(\d+)\.data-\d+-of-\d+$", f)
+            if match_obj is not None:
+                all_steps.append(int(match_obj.group(1)))
+    all_steps = sorted(set(all_steps))
+    
+    print(f"Found steps: {all_steps} for model: {model_save_dir}")
+
+    for steps in all_steps:    
         ckpt = f"{model_save_dir}/model.ckpt-{steps}"
         bert = load_tf_weights_in_bert(bert, config, ckpt)
         
@@ -111,10 +122,11 @@ if __name__=="__main__":
     for file in os.listdir(model_save_dir):
         filepath = os.path.join(model_save_dir, file)
         if os.path.isfile(filepath) and "events.out.tfevents" in filepath:
-            api.create_commit(repo_id=f"Jeevesh8/{hf_repo_dir}", 
+            api.create_commit(repo_id=hf_repo, 
                               operations=[CommitOperationAdd(path_in_repo=filepath.split("/")[-1], path_or_fileobj=filepath)],
                               commit_message="Added training logs",
                               token=hf_auth_token)
     
-    print("Deleting folder:", hf_repo_dir)
-    shutil.rmtree(hf_repo_dir)
+    if os.path.exists(hf_repo_dir):
+        print("Deleting folder:", hf_repo_dir)
+        shutil.rmtree(hf_repo_dir)
