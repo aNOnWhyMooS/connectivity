@@ -2,6 +2,10 @@ cmd = "\"python3 interpolate_1d.py --base_model {9} --from_model_type {8}\
     --suffix_pairs {0} --base_models_prefix {1} --save_file {2} --dataset {3} --split {4}\
     --num_steps {5} --experiment_id interpolate_{7}_{3}_{4}_{5}_{6} #--permute_wts\""
 
+cmd_without_steps = "\"python3 interpolate_1d.py --base_model {9} --from_model_type {8}\
+    --suffix_pairs {0} --base_models_prefix {1} --save_file {2} --dataset {3} --split {4}\
+    --experiment_id interpolate_{7}_{3}_{4}_{5}_{6} #--permute_wts --num_steps {5}\""
+
 import argparse  
 import subprocess
 import shlex
@@ -97,6 +101,19 @@ def get_parser():
                 Its tokenizer will be used.",
         required=True,
     )
+    
+    parser.add_argument(
+        "--from_model_suffixes",
+        nargs="+",
+        type=str,
+    )
+    
+    parser.add_argument(
+        "--to_model_suffixes",
+        nargs="+",
+        type=str,
+    )
+    
     return parser
 
 if __name__=="__main__":
@@ -104,11 +121,19 @@ if __name__=="__main__":
     args = parser.parse_args()
     assert args.save_file.endswith(".pkl")
     
-    to_interpolate = args.all_suffixes
+    distinct_sets = False
+    if args.from_model_suffixes and args.to_model_suffixes:
+        distinct_sets = True
+        from_interpolate = args.from_model_suffixes
+        to_interpolate = args.to_model_suffixes
+    else:
+        from_interpolate = args.all_suffixes
+        to_interpolate = args.all_suffixes
+    
     suffix_pairs = []
-    for i, elem1 in enumerate(to_interpolate):
+    for i, elem1 in enumerate(from_interpolate):
         for j, elem2 in enumerate(to_interpolate):
-            if i<j:
+            if distinct_sets or i<j:
                 suffix_pairs.append(elem1+","+elem2)
     
     cmds = []
@@ -117,6 +142,9 @@ if __name__=="__main__":
     total_interpols = len(suffix_pairs)
     step_size = total_interpols//(args.total_jobs-1)
     
+    if args.num_steps is None:
+        cmd = cmd_without_steps
+
     for i in range(args.total_jobs):
         cmds.append(cmd.format(" ".join([str(elem) for elem in suffix_pairs[0:step_size]]),
                                 args.base_models_prefix, args.save_file[:-4]+str(i)+".pkl", args.dataset, args.split,
