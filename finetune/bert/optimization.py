@@ -72,7 +72,8 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
   grads = tf.gradients(loss, tvars)
 
   # This is how the model was pre-trained.
-  (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+  (grads, global_norm) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+  print_op = tf.print("Gradient Norm at step:", global_step, "is:", global_norm)
 
   train_op = optimizer.apply_gradients(
       zip(grads, tvars), global_step=global_step)
@@ -81,7 +82,7 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
   # However, `AdamWeightDecayOptimizer` doesn't do this. But if you use
   # a different optimizer, you should probably take this line out.
   new_global_step = global_step + 1
-  train_op = tf.group(train_op, [global_step.assign(new_global_step)])
+  train_op = tf.group(train_op, [print_op, global_step.assign(new_global_step)])
   return train_op
 
 
@@ -166,10 +167,10 @@ class AdamWeightDecayOptimizer(tf.train.Optimizer):
            v.assign(next_v)])
     
     if self.log_grad_norms:
-      print("Gradient Norm at step:", global_step, "is", tf.sqrt(grad_norm))
-      print("First Moment Norm at step:", global_step, "is", tf.sqrt(first_moment_norm))
-      print("Second Moment Norm at step:", global_step, "is", tf.sqrt(second_moment_norm))
-      
+      assignments.append([
+          tf.print("First Moment Norm at step:", global_step, "is", tf.sqrt(first_moment_norm),),
+          tf.print("Second Moment Norm at step:", global_step, "is", tf.sqrt(second_moment_norm),)
+      ])
     return tf.group(*assignments, name=name)
 
   def _do_use_weight_decay(self, param_name):

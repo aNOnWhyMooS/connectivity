@@ -34,8 +34,8 @@ python3 run_classifier.py \
   --max_seq_length=128 \
   --train_batch_size=32 \
   --learning_rate=2e-5 \
-  --num_train_epochs=12.0 \
+  --num_train_epochs=6.0 \
   --training_seed=$SLURM_ARRAY_TASK_ID \
-  --output_dir=qqp_save_$SLURM_ARRAY_TASK_ID --save_checkpoints_steps=20000
+  --output_dir=qqp_save_$SLURM_ARRAY_TASK_ID --save_checkpoints_steps=10000
 exit
 "
