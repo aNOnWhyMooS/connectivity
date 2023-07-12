@@ -94,7 +94,8 @@ class AdamWeightDecayOptimizer(tf.train.Optimizer):
                beta_2=0.999,
                epsilon=1e-6,
                exclude_from_weight_decay=None,
-               name="AdamWeightDecayOptimizer"):
+               name="AdamWeightDecayOptimizer",
+               log_grad_norms=False):
     """Constructs a AdamWeightDecayOptimizer."""
     super(AdamWeightDecayOptimizer, self).__init__(False, name)
 
@@ -104,16 +105,19 @@ class AdamWeightDecayOptimizer(tf.train.Optimizer):
     self.beta_2 = beta_2
     self.epsilon = epsilon
     self.exclude_from_weight_decay = exclude_from_weight_decay
-
+    self.log_grad_norms = log_grad_norms
+  
   def apply_gradients(self, grads_and_vars, global_step=None, name=None):
     """See base class."""
     assignments = []
+    grad_norm, first_moment_norm, second_moment_norm = 0, 0, 0
+    
     for (grad, param) in grads_and_vars:
       if grad is None or param is None:
         continue
 
       param_name = self._get_variable_name(param.name)
-
+      
       m = tf.get_variable(
           name=param_name + "/adam_m",
           shape=param.shape.as_list(),
@@ -126,7 +130,12 @@ class AdamWeightDecayOptimizer(tf.train.Optimizer):
           dtype=tf.float32,
           trainable=False,
           initializer=tf.zeros_initializer())
-
+      
+      if self.log_grad_norms:
+        grad_norm += tf.reduce_sum(tf.square(grad))
+        first_moment_norm += tf.reduce_sum(tf.square(m))
+        second_moment_norm += tf.reduce_sum(tf.square(v))
+      
       # Standard Adam update.
       next_m = (
           tf.multiply(self.beta_1, m) + tf.multiply(1.0 - self.beta_1, grad))
@@ -154,6 +163,12 @@ class AdamWeightDecayOptimizer(tf.train.Optimizer):
           [param.assign(next_param),
            m.assign(next_m),
            v.assign(next_v)])
+    
+    if self.log_grad_norms:
+      print("Gradient Norm at step:", global_step, "is", tf.sqrt(grad_norm))
+      print("First Moment Norm at step:", global_step, "is", tf.sqrt(first_moment_norm))
+      print("Second Moment Norm at step:", global_step, "is", tf.sqrt(second_moment_norm))
+      
     return tf.group(*assignments, name=name)
 
   def _do_use_weight_decay(self, param_name):
