@@ -22,12 +22,15 @@ from huggingface_hub import Repository
 
 import torch
 import sys
+import string, random
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """### Get Commits on Repo"""
 
 model_repo = f"Jeevesh8/bert_ft_qqp_6ep-{sys.argv[1]}"
-repo = Repository(local_dir="model_commits/", clone_from=model_repo, skip_lfs_files=True)
+ran_string = ''.join(random.choices(string.ascii_lowercase))
+repo = Repository(local_dir=f"model_commits_{ran_string}/", clone_from=model_repo, skip_lfs_files=True)
 
 repo = Repo("model_commits/")
 
@@ -122,7 +125,7 @@ def get_cosine_sims(model):
     return cosine_sims.cpu().numpy()
 
 ckpt_wise_cosine_sims = {}
-for steps, commit_hash in ckpts:
+for steps, commit_hash in ckpts.items():
     model = BertForSequenceClassification.from_pretrained(model_repo).to(device)
     ckpt_wise_cosine_sims[steps] = get_cosine_sims(model)
 
