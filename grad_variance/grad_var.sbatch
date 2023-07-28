@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=finetune_berts
+#SBATCH --job-name=grad_vars
 #SBATCH --open-mode=append
 #SBATCH --output=./sbatch_outs/%A_%a.out
 #SBATCH --error=./sbatch_outs/%A_%a.err
