@@ -30,9 +30,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model_repo = f"Jeevesh8/bert_ft_qqp_6ep-{sys.argv[1]}"
 ran_string = ''.join(random.choices(string.ascii_lowercase))
-repo = Repository(local_dir=f"model_commits_{ran_string}/", clone_from=model_repo, skip_lfs_files=True)
+local_dir = f"model_commits_{ran_string}/"
+repo = Repository(local_dir=local_dir, clone_from=model_repo, skip_lfs_files=True)
 
-repo = Repo("model_commits/")
+repo = Repo(local_dir)
 
 import re
 
@@ -133,3 +134,9 @@ import pickle
 
 with open(sys.argv[2], "wb") as f:
     pickle.dump(ckpt_wise_cosine_sims, f)
+
+
+"""### Delete the model repo, to free up space"""
+
+import shutil
+shutil.rmtree(local_dir)
