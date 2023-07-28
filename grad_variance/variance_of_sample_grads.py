@@ -29,7 +29,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """### Get Commits on Repo"""
 
 model_repo = f"Jeevesh8/bert_ft_qqp_6ep-{sys.argv[1]}"
-ran_string = ''.join(random.choices(string.ascii_lowercase))
+ran_string = ''.join(random.choices(string.ascii_lowercase, k=20))
 local_dir = f"model_commits_{ran_string}/"
 repo = Repository(local_dir=local_dir, clone_from=model_repo, skip_lfs_files=True)
 
@@ -86,7 +86,7 @@ def cosine_sim(grads, model):
             dot_prod += torch.sum(grads[name]*grads2)
             norm1 += torch.sum(grads[name]*grads[name])
             norm2 += torch.sum(grads2*grads2)
-    return (dot_prod/torch.sqrt(norm1*norm2)).item()
+    return (dot_prod/torch.sqrt(norm1*norm2)).cpu().item()
 
 def shift_data(inp):
     for k, v in inp.items():
@@ -123,7 +123,7 @@ def get_cosine_sims(model):
 
     for i in range(len(loader)):
         cosine_sims[i][i]=0
-    return cosine_sims.cpu().numpy()
+    return cosine_sims
 
 ckpt_wise_cosine_sims = {}
 for steps, commit_hash in ckpts.items():
