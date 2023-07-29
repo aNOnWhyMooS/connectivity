@@ -87,10 +87,12 @@ def shift_data(inp):
 
 def calc_embeddings(model, loader):
     embeddings = {}
+    model.eval()
     for i, batch in enumerate(loader):
         batch = shift_data(batch)
         batch["labels"] = batch.pop("label")
-        out = model(**batch)
+        with torch.no_grad():
+            out = model(**batch)
         for logits, input_ids in zip(out.logits, batch["input_ids"]):
             embeddings[tokenizer.decode(input_ids[input_ids!=tokenizer.pad_token_id])] = logits.cpu()
     return embeddings
