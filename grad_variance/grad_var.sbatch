@@ -12,13 +12,15 @@
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
 OVERLAY_FILE=/scratch/$USER/mode-conn-0/mode-conn-0.ext3:ro
 
+STEPS=$1
 
 singularity exec --nv\
                  --overlay $OVERLAY_FILE $SINGULARITY_IMAGE \
                  /bin/bash -c "
 source /ext3/env.sh
+echo \"Running for ckpts at step: ${STEPS}\"
 export HF_DATASETS_CACHE=\"/scratch/$USER/.cache/huggingface/datasets\"
 export TRANSFORMERS_CACHE=\"/scratch/$USER/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/$USER/.cache/huggingface/metrics\"
-python3 variance_of_sample_grads.py ${SLURM_ARRAY_TASK_ID} sample_wise_cosine_sims_${SLURM_ARRAY_TASK_ID}.pkl
+python3 variance_of_sample_grads.py ${SLURM_ARRAY_TASK_ID} sample_wise_cosine_sims_${SLURM_ARRAY_TASK_ID}_${STEPS}.pkl ${STEPS}
 "
