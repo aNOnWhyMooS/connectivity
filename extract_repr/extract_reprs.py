@@ -53,7 +53,7 @@ def get_qqp_data():
     return dataset
 
 def get_paws_data():
-    dataset = load_dataset("csv", data_files={"dev_and_test": "paws_final/dev_and_test.tsv"}, delimiter="\t")["dev_and_test"]
+    dataset = load_dataset("csv", data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"}, delimiter="\t")["dev_and_test"]
     dataset = dataset.rename_columns({"sentence1": "question1", "sentence2": "question2"})
     return dataset
 
