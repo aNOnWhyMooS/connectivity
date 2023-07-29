@@ -111,7 +111,6 @@ def get_cosine_sims(model):
                 model.zero_grad()
 
             elif i>j:
-                print(f"Calculating similarities of model {i} with model {j}")
                 #print(tokenizer.decode(inp["input_ids"][0], skip_special_tokens=True))
                 #print(inp["label"])
                 inp["labels"] = inp.pop("label")
@@ -121,6 +120,7 @@ def get_cosine_sims(model):
                 #print(out.logits)
                 #print(out.loss)
                 cosine_sims[i][j] = cosine_sims[j][i] = cosine_sim(gradients, model)
+                print(f"Cosine Similarities of model {i} with model {j}: {cosine_sims[i][j]}")
 
     for i in range(len(loader)):
         cosine_sims[i][i]=0
