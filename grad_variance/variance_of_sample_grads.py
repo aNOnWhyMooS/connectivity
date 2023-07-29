@@ -111,14 +111,14 @@ def get_cosine_sims(model):
                 model.zero_grad()
 
             elif i>j:
-                print(tokenizer.decode(inp["input_ids"][0], skip_special_tokens=True))
-                print(inp["label"])
+                #print(tokenizer.decode(inp["input_ids"][0], skip_special_tokens=True))
+                #print(inp["label"])
                 inp["labels"] = inp.pop("label")
                 inp = shift_data(inp)
                 out = model(**inp)
                 out.loss.backward()
-                print(out.logits)
-                print(out.loss)
+                #print(out.logits)
+                #print(out.loss)
                 cosine_sims[i][j] = cosine_sims[j][i] = cosine_sim(gradients, model)
 
     for i in range(len(loader)):
