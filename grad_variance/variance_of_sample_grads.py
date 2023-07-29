@@ -51,7 +51,7 @@ dataset = load_dataset("glue", "qqp")
 
 dataset = dataset["validation"]
 
-dataset = dataset.shuffle(seed=42).select(list(range(2048)))
+dataset = dataset.shuffle(seed=42).select(list(range(1024)))
 
 tokenizer = BertTokenizer.from_pretrained(model_repo)
 dataset = dataset.map(lambda e: tokenizer(e['question1'], e['question2'],
@@ -125,12 +125,12 @@ def get_cosine_sims(model):
         cosine_sims[i][i]=0
     return cosine_sims
 
-ckpt_wise_cosine_sims = {}
-for steps, commit_hash in ckpts.items():
-    model = BertForSequenceClassification.from_pretrained(model_repo).to(device)
-    ckpt_wise_cosine_sims[steps] = get_cosine_sims(model)
-
 import pickle
+
+ckpt_wise_cosine_sims = {}
+steps = int(sys.argv[3])
+model = BertForSequenceClassification.from_pretrained(model_repo, revision=ckpts[steps]).to(device)
+ckpt_wise_cosine_sims[steps] = get_cosine_sims(model)
 
 with open(sys.argv[2], "wb") as f:
     pickle.dump(ckpt_wise_cosine_sims, f)
