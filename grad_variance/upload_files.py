@@ -8,7 +8,7 @@ api.create_repo(repo_id=repo_id)
 
 for f in os.listdir("./"):
     if f.endswith(".pkl"):
-        match_obj = re.fullmatch(r"sample_wise_cosine_sims_(\d+)_(\d+).pkl")
+        match_obj = re.fullmatch(r"sample_wise_cosine_sims_(\d+)_(\d+).pkl", f)
         if match_obj is None:
             continue
         seed, steps = match_obj.group(1), match_obj.group(2)
