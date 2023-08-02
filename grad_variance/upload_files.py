@@ -4,7 +4,7 @@ from huggingface_hub import HfApi
 api = HfApi(token=sys.argv[1])
 
 repo_id = "Jeevesh8/seed_step_wise_cosine_sims_bert_ft_qqp_6ep"
-api.create_repo(repo_id=repo_id)
+api.create_repo(repo_id=repo_id, exist_ok=True)
 
 for f in os.listdir("./"):
     if f.endswith(".pkl"):
