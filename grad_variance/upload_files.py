@@ -12,5 +12,5 @@ for f in os.listdir("./"):
         if match_obj is None:
             continue
         seed, steps = match_obj.group(1), match_obj.group(2)
-        api.upload_file(path_or_fileobj=f, repo_id=repo_id,
+        api.upload_file(path_or_fileobj=f, repo_id=repo_id, path_in_repo=f,
                         commit_message=f"Adding cosine similarity of gradients on 1024 samples from qqp-validation for model Jeevesh8/bert_ft_qqp_6ep-{seed} at steps {steps}")
