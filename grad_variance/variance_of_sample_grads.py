@@ -107,7 +107,7 @@ def get_cosine_sims(model):
                 out.loss.backward()
                 for name, param in model.named_parameters():
                     if param.grad is not None:
-                        gradients[name] = param.grad.detach()
+                        gradients[name] = param.grad.detach().clone()
                 model.zero_grad()
 
             elif i>j:
