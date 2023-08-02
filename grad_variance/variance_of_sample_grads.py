@@ -51,7 +51,7 @@ dataset = load_dataset("glue", "qqp")
 
 dataset = dataset["validation"]
 
-dataset = dataset.shuffle(seed=42).select(list(range(1024)))
+dataset = dataset.shuffle(seed=42).select(list(range(256)))
 
 tokenizer = BertTokenizer.from_pretrained(model_repo)
 dataset = dataset.map(lambda e: tokenizer(e['question1'], e['question2'],
