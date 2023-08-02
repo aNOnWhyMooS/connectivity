@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=upload_t5
+#SBATCH --job-name=upload_pkl_files
 #SBATCH --open-mode=append
 #SBATCH --output=./sbatch_outs/%A_%a.out
 #SBATCH --error=./sbatch_outs/%A_%a.err
