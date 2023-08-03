@@ -34,5 +34,5 @@ def get_f1(Xs, Ys):
     Ypred = clf.predict(Xs)
     return f1_score(Ys, Ypred)
 
-pkl_file = f"qqp_paws_embeds_{seed}_{steps}.pkl"
+pkl_file = f"../extract_repr/reduced/qqp_paws_embeds_{seed}_{steps}.pkl"
 print(f"F1 for {seed} at {steps}: {get_f1(*load_paws_data(pkl_file))}")
