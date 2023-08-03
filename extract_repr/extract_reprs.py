@@ -71,7 +71,7 @@ def tokenize_dataset(dataset):
                             input_columns=['input_ids', 'attention_mask',
                                             'token_type_ids'])
 
-    loader = DataLoader(dataset, batch_size=32)
+    loader = DataLoader(dataset, batch_size=(4 if device==torch.device("cpu") else 32))
     return loader
 
 loaders = {"qqp" : tokenize_dataset(get_qqp_data()),
