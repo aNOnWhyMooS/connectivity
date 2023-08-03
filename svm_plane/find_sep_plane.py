@@ -21,7 +21,7 @@ def load_paws_data(pkl_file):
     with open(pkl_file, "rb") as f:
         reprs = pickle.load(f)["paws"]
     Xs, Ys = [], []
-    print("Check shape of representation:", reprs.values()[0].shape)
+    print("Check shape of representation:", list(reprs.values())[0].shape)
     print(f"Considering {len(reprs)} samples")
     for k, repr in reprs.items():
         Xs.append(repr.numpy())
