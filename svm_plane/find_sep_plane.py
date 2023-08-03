@@ -1,5 +1,6 @@
 import sys
 import pickle
+import numpy as np
 from sklearn import svm
 from sklearn.metrics import f1_score
 
@@ -21,13 +22,13 @@ def load_paws_data(pkl_file):
         reprs = pickle.load(f)["paws"]
     Xs, Ys = [], []
     for k, repr in reprs:
-        Xs.append(repr)
+        Xs.append(repr.numpy())
         Ys.append(paws_data[k])
     return Xs, Ys
 
 def get_f1(Xs, Ys):
     clf = svm.SVC()
-    clf.fit(Xs, Ys)
+    clf.fit(np.array(Xs), np.array(Ys))
     Ypred = clf.predict(Xs)
     return f1_score(Ys, Ypred)
 
