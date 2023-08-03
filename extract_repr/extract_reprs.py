@@ -8,7 +8,7 @@
 # %%capture
 # !pip install GitPython
 
-from transformers import BertForSequenceClassification, BertTokenizer
+from transformers import BertModel, BertTokenizer
 
 from git import Repo
 from huggingface_hub import Repository
@@ -93,14 +93,14 @@ def calc_embeddings(model, loader):
         batch["labels"] = batch.pop("label")
         with torch.no_grad():
             out = model(**batch)
-        for logits, input_ids in zip(out.logits, batch["input_ids"]):
-            embeddings[tokenizer.decode(input_ids[input_ids!=tokenizer.pad_token_id])] = logits.cpu()
+        for hs, input_ids in zip(out.last_hidden_states, batch["input_ids"]):
+            embeddings[tokenizer.decode(input_ids[input_ids!=tokenizer.pad_token_id])] = hs.cpu()
     return embeddings
 
 import pickle
 
 steps = int(sys.argv[3])
-model = BertForSequenceClassification.from_pretrained(model_repo, revision=ckpts[steps]).to(device)
+model = BertModel.from_pretrained(model_repo, revision=ckpts[steps]).to(device)
 embeddings = {k : calc_embeddings(model, v) for k,v in loaders.items()}
 
 with open(sys.argv[2], "wb") as f:
