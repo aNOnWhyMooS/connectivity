@@ -21,7 +21,7 @@ for commit in repo.iter_commits("main"):
     if match_obj is not None:
         ckpts[int(match_obj.group(1))] = str(commit)
 
-top_layer = BertForSequenceClassification.from_pretrained(model_repo, revision=ckpts[0]).classifer
+top_layer = BertForSequenceClassification.from_pretrained(model_repo, revision=ckpts[0]).classifier
 
 with torch.no_grad():
     l2_norm = torch.norm(top_layer.weight.data)
