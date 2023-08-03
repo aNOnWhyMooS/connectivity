@@ -36,5 +36,10 @@ def get_f1(Xs, Ys):
 
 pkl_file = f"../extract_repr/reduced/qqp_paws_embeds_{seed}_{steps}.pkl"
 f1, other_scores = get_f1(*load_paws_data(pkl_file))
+
 print(f"F1 for {seed} at {steps}: {f1}")
-print(other_scores)
+
+print("Precisions:", other_scores[0])
+print("Recalls:", other_scores[1])
+print("F1s:", other_scores[2])
+print("Supports:", other_scores[3])
