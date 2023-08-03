@@ -34,3 +34,6 @@ print(f"L2/L1 norm for seed {sys.argv[1]} at step 0:", ratio)
 print(f"Bias for seed {sys.argv[1]} at step 0:", top_layer.bias.data)
 print(f"L2 Norm of bias: {bias_l2_norm}")
 print(f"L1 Norm of bias: {bias_l1_norm}")
+
+import shutil
+shutil.rmtree(local_dir)
