@@ -27,6 +27,10 @@ with torch.no_grad():
     l2_norm = torch.norm(top_layer.weight.data)
     l1_norm = torch.norm(top_layer.weight.data, p=1)
     ratio = l2_norm/l1_norm
+    bias_l2_norm = torch.norm(top_layer.bias.data)
+    bias_l1_norm = torch.norm(top_layer.bias.data, p=1)
 
 print(f"L2/L1 norm for seed {sys.argv[1]} at step 0:", ratio)
 print(f"Bias for seed {sys.argv[1]} at step 0:", top_layer.bias.data)
+print(f"L2 Norm of bias: {bias_l2_norm}")
+print(f"L1 Norm of bias: {bias_l1_norm}")
