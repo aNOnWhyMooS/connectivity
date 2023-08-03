@@ -2,6 +2,8 @@ import sys
 import pickle
 import numpy as np
 from sklearn import svm
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from datasets import load_dataset
@@ -29,7 +31,7 @@ def load_paws_data(pkl_file):
     return Xs, Ys
 
 def get_f1(Xs, Ys):
-    clf = svm.SVC()
+    clf = make_pipeline(StandardScaler(), svm.SVC(gamma='auto'))
     clf.fit(np.array(Xs), np.array(Ys))
     Ypred = clf.predict(Xs)
     return f1_score(Ys, Ypred), precision_recall_fscore_support(Ys, Ypred)
