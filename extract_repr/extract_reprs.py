@@ -90,7 +90,7 @@ def calc_embeddings(model, loader):
     model.eval()
     for i, batch in enumerate(loader):
         batch = shift_data(batch)
-        batch["labels"] = batch.pop("label")
+        batch.pop("label")
         with torch.no_grad():
             out = model(**batch)
         for hs, input_ids in zip(out.last_hidden_states, batch["input_ids"]):
