@@ -10,7 +10,7 @@ from transformers import BertTokenizer
 seed = sys.argv[1]
 steps = sys.argv[2]
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-paws_data = load_dataset("csv", data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"}, delimiter="\t")["dev_and_test"]
+paws_data = load_dataset("csv", data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"}, delimiter="\t")
 paws_data_to_labels = {}
 for sample in paws_data["dev_and_test"]:
     ids = tokenizer(sample["sentence1"], sample["sentence2"], truncation=True, padding="max_length",return_tensors="pt")["input_ids"][0]
