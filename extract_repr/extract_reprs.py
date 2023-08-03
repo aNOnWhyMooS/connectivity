@@ -93,7 +93,7 @@ def calc_embeddings(model, loader):
         batch.pop("label")
         with torch.no_grad():
             out = model(**batch)
-        for hs, input_ids in zip(out.last_hidden_states, batch["input_ids"]):
+        for hs, input_ids in zip(out.last_hidden_state, batch["input_ids"]):
             embeddings[tokenizer.decode(input_ids[input_ids!=tokenizer.pad_token_id])] = hs.cpu()
     return embeddings
 
