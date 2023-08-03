@@ -2,7 +2,7 @@ import sys
 import pickle
 import numpy as np
 from sklearn import svm
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from datasets import load_dataset
 from transformers import BertTokenizer
@@ -32,7 +32,9 @@ def get_f1(Xs, Ys):
     clf = svm.SVC()
     clf.fit(np.array(Xs), np.array(Ys))
     Ypred = clf.predict(Xs)
-    return f1_score(Ys, Ypred)
+    return f1_score(Ys, Ypred), precision_recall_fscore_support(Ys, Ypred)
 
 pkl_file = f"../extract_repr/reduced/qqp_paws_embeds_{seed}_{steps}.pkl"
-print(f"F1 for {seed} at {steps}: {get_f1(*load_paws_data(pkl_file))}")
+f1, other_scores = get_f1(*load_paws_data(pkl_file))
+print(f"F1 for {seed} at {steps}: {f1}")
+print(other_scores)
