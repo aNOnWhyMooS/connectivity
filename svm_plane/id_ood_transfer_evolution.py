@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from transformers import BertTokenizer
 
 seed = sys.argv[1]
