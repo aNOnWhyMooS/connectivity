@@ -19,6 +19,18 @@ for sample in paws_data["dev_and_test"]:
     paws_data_to_labels[tokenizer.decode(ids[ids!=tokenizer.pad_token_id])] = sample["label"]
 paws_data = paws_data_to_labels
 
+qqp_data = load_dataset("qqp", "glue")["validation"]
+qqp_data_to_labels = {}
+datasets = []
+for i in range(len(qqp_data.features["label"].names)):
+    datasets.append(qqp_data.shuffle(seed=42).filter(lambda e: e["label"]==i).select(list(range(512))))
+qqp_data = concatenate_datasets(datasets)
+qqp_data_to_labels = {}
+for sample in qqp_data:
+    ids = tokenizer(sample["question1"], sample["question2"], truncation=True, padding="max_length",return_tensors="pt")["input_ids"][0]
+    qqp_data_to_labels[tokenizer.decode(ids[ids!=tokenizer.pad_token_id])] = sample["label"]
+qqp_data = qqp_data_to_labels
+
 def load_data(pkl_file,  dataset="paws"):
     with open(pkl_file, "rb") as f:
         reprs = pickle.load(f)[dataset]
@@ -27,7 +39,7 @@ def load_data(pkl_file,  dataset="paws"):
     print(f"Considering {len(reprs)} samples")
     for k, repr in reprs.items():
         Xs.append(repr.numpy())
-        Ys.append(paws_data[k])
+        Ys.append(paws_data[k] if dataset=="paws" else qqp_data[k])
     return Xs, Ys
 
 def get_f1(train_Xs, train_Ys, test_Xs, test_Ys):
