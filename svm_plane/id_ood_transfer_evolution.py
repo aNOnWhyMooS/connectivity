@@ -19,7 +19,7 @@ for sample in paws_data["dev_and_test"]:
     paws_data_to_labels[tokenizer.decode(ids[ids!=tokenizer.pad_token_id])] = sample["label"]
 paws_data = paws_data_to_labels
 
-qqp_data = load_dataset("qqp", "glue")["validation"]
+qqp_data = load_dataset("glue", "qqp")["validation"]
 qqp_data_to_labels = {}
 datasets = []
 for i in range(len(qqp_data.features["label"].names)):
