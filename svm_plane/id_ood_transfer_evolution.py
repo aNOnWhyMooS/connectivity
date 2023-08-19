@@ -43,7 +43,7 @@ def load_data(pkl_file,  dataset="paws"):
     return Xs, Ys
 
 def get_f1(train_Xs, train_Ys, test_Xs, test_Ys):
-    clf = make_pipeline(StandardScaler(), svm.SVC(gamma='auto'))
+    clf = make_pipeline(StandardScaler(), svm.SVC(gamma='auto', kernel="linear"))
     clf.fit(np.array(train_Xs), np.array(train_Ys))
     Ypred = clf.predict(test_Xs)
     return f1_score(test_Ys, Ypred), precision_recall_fscore_support(test_Ys, Ypred)
