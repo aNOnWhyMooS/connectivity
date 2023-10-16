@@ -37,7 +37,7 @@ def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
         repo = Repo(tmp_dir)
     
     for commit in repo.iter_commits("main"):
-        if str(num_steps) in commit.message:
+        if f" {num_steps} steps" in commit.message:
             selected_commit=str(commit)
             break
     else:
