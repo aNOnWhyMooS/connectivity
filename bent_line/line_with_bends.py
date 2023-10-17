@@ -8,16 +8,14 @@ import torch
 import torch.nn as nn
 from datasets import load_metric
 
-sys.path.append("../../../simplex/")
-import orig_utils as simp_utils
-
 import time
-sys.path.append("../../../simplex/models/")
-from orig_basic_simplex import SimplicialComplex
 
+import constellations.simplexes.orig_utils as simp_utils
 from constellations.dataloaders.loader import get_train_test_loaders
-from constellations.model_loaders.modelling_utils import get_pred_fn, get_criterion_fn, get_logits_converter
+from constellations.simplexes.models.orig_basic_simplex import SimplicialComplex
 from constellations.model_loaders.load_model import get_sequence_classification_model
+from constellations.model_loaders.modelling_utils import get_pred_fn, get_criterion_fn, get_logits_converter
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
