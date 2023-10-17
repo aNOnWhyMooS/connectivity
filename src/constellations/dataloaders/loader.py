@@ -100,4 +100,35 @@ def get_loader(args,
     input_target_loader = loader_wrapper(loader)
     return input_target_loader
 
+def get_train_test_loaders(args, *get_loader_args, **get_loader_kwargs):
+    """To get multiple train loaders, and a single test loader.
+    Args:
+        args:  A namespace object to pass to get_loader().
+        *get_loader_args:  Arguments to pass to get_loader().
+        **get_loader_kwargs:  Keyword arguments to pass to get_loader().
+    Returns:
+        Train and test data loader for the dataset specified in args.dataset.
+        Train data is broken into args.break_epoch train loaders, and a single 
+        test loader with min(len(test_dataset), 8194) examples, are returned.
+    """
+    args.split = "train"
+    train_loaders = []
+    
+    for i in range(args.break_epochs):
+        args.split = "train"
+        train_loader = get_loader(args, *get_loader_args, **get_loader_kwargs, 
+                                  n_parts=args.break_epochs, index=i)
+        train_loaders.append(train_loader)
+    
+    args.split = "test"
+    if args.dataset == "qqp":
+        args.split = "validation"
 
+    test_loader = get_loader(args, *get_loader_args, **get_loader_kwargs)
+    if len(test_loader.hf_loader.dataset) >= 8194:
+        args.num_exs = 8194
+        test_loader = get_loader(args, *get_loader_args, **get_loader_kwargs)
+        del args.num_exs
+    
+    del args.split
+    return train_loaders, test_loader
