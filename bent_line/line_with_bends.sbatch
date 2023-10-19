@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=eval_berts_$2
+#SBATCH --job-name=bent_line_$2
 #SBATCH --open-mode=append
 #SBATCH --output=./sbatch_outs/%A_%a.out
 #SBATCH --error=./sbatch_outs/%A_%a.err
