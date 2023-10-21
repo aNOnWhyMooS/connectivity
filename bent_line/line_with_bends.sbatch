@@ -20,10 +20,10 @@ source /ext3/env.sh
 export HF_DATASETS_CACHE=\"/scratch/${USER}/.cache/huggingface/datasets\"
 export TRANSFORMERS_CACHE=\"/scratch/${USER}/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/${USER}/.cache/huggingface/metrics\"
-python3 -m pip install -e ../../../connectivity/src
+python3 -m pip install -e ../src
 python3 line_with_bends.py --base_models_prefix Jeevesh8/$3 --base_model bert-base-uncased\
                            --dataset qqp --batch_size 2 --gradient_accumulation_steps 4\
-                           --n_sample 4 --break_epochs 10\
-                           --num_steps $4 --indices $5;
+                           --n_sample 2 --break_epochs 50\
+                           --num_steps $4 --indices $5 --experiment_id $6;
 exit
 "

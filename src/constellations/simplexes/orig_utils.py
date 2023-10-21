@@ -180,11 +180,11 @@ def store_outs(loader: Iterable[Tuple[Any, Any]],
     
     return None
 
-def eval(loader: Iterable[Tuple[Any, Any]],
-         model: nn.Module, 
-         criterion: Union[nn.Module, Callable],
-         pred_fn: Optional[Callable]=None,
-         metric:  Optional[datasets.Metric]=None) -> Dict[str, float]:
+def eval_model(loader: Iterable[Tuple[Any, Any]],
+               model: nn.Module, 
+               criterion: Union[nn.Module, Callable],
+               pred_fn: Optional[Callable]=None,
+               metric:  Optional[datasets.Metric]=None) -> Dict[str, float]:
     """Evaluates the model on the data in the loader, using the criterion and metric provided.
     Args:
         loader:    A data loader for the model to be evaluated on. Should yield tuples 
@@ -345,7 +345,7 @@ def flatness_measure(loader: Iterable[Tuple[Any, Any]],
     Returns:
         The ɛ-sharpness of the model.
     """
-    original_loss = eval(loader, model, criterion)["loss"]
+    original_loss = eval_model(loader, model, criterion)["loss"]
     print("Original Loss:", original_loss, flush=True)
     
     model.train()
@@ -367,7 +367,7 @@ def flatness_measure(loader: Iterable[Tuple[Any, Any]],
             optimizer.zero_grad()
             clipper.clip()
 
-    maximized_loss = eval(loader, model, criterion)["loss"]
+    maximized_loss = eval_model(loader, model, criterion)["loss"]
     
     print("Maximized loss:", maximized_loss, flush=True)
 

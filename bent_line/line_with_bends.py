@@ -7,12 +7,13 @@ import sys
 import torch
 import torch.nn as nn
 from datasets import load_metric
+from transformers import AutoTokenizer
 
 import time
 
-import constellations.simplexes.orig_utils as simp_utils
 from constellations.dataloaders.loader import get_train_test_loaders
 from constellations.simplexes.models.orig_basic_simplex import SimplicialComplex
+from constellations.simplexes.orig_utils import train_transformer_epoch, eval_model 
 from constellations.model_loaders.load_model import get_sequence_classification_model
 from constellations.model_loaders.modelling_utils import get_pred_fn, get_criterion_fn, get_logits_converter
 
@@ -31,7 +32,9 @@ def main(args):
     mnli_label_dict = {"contradiction": 0, "entailment": 1, "neutral": 2}
     hans_label_dict = {"entailment": 0, "non-entailment": 1}
 
-    trainloaders, testloader = get_train_test_loaders(args, mnli_label_dict, 
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+
+    trainloaders, testloader = get_train_test_loaders(args, tokenizer, mnli_label_dict, 
                                                       heuristic_wise=["lexical_overlap", 
                                                       "constituent", "subsequence"],
                                                       onlyNonEntailing=False)
@@ -113,7 +116,7 @@ def main(args):
             if total_sub_epochs==args.total_sub_epochs:
                 break
             time_ep = time.time()
-            train_res = simp_utils.train_transformer_epoch(
+            train_res = train_transformer_epoch(
                 trainloaders[sub_epoch], 
                 simplicial_complex, 
                 criterion,
@@ -128,7 +131,7 @@ def main(args):
             eval_ep = total_sub_epochs % args.eval_freq == args.eval_freq - 1
             
             if eval_ep:
-                test_res = simp_utils.eval(testloader, simplicial_complex, 
+                test_res = eval_simplex(testloader, simplicial_complex, 
                                            criterion, pred_fn, metric)
             else:
                 test_res = {'loss': None, 'accuracy': None}
