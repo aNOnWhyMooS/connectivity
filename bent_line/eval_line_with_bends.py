@@ -48,6 +48,7 @@ def get_points_on_bent_line(dists: List[float],
             points_on_segment.append((left_point_wt,right_point_wt))
             prev_dist = 0.
         intermediate_points.append(points_on_segment)
+    intermediate_points[-1].append((0.0, 1.0))
     return intermediate_points
 
 def get_intermediate_points(args,
