@@ -643,10 +643,13 @@ def train_transformer_epoch(loader: Iterable[Tuple[Any, Any]],
             metric.add_batch(predictions=pred,
                              references=target)
     
+    print('Completed loader.') 
     metric_dict = {} if metric is None else metric.compute()
     
     metric_dict.update({
         'loss': loss_sum / len(loader.hf_loader.dataset),
     })
+    
+    print('Computed metrics:', metric_dict)
 
     return metric_dict

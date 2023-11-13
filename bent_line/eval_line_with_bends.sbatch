@@ -22,10 +22,19 @@ export HF_DATASETS_CACHE=\"/scratch/${USER}/.cache/huggingface/datasets\"
 export TRANSFORMERS_CACHE=\"/scratch/${USER}/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/${USER}/.cache/huggingface/metrics\"
 python3 -m pip install -e ../src
-python3 line_with_bends.py --base_models_prefix Jeevesh8/$3 --base_model bert-base-uncased\
-                           --dataset qqp --batch_size 4 --gradient_accumulation_steps 4\
-                           --n_sample 2 --break_epochs 1000\
-                           --num_steps $4 --indices $5 --experiment_id $6\
-                           --begin_from_dataloader ${7:-0} --total_sub_epochs ${8:-1};
+echo \"Base Model Prefix: $2\";
+echo \"Dataset: $3\";
+
+if [[ \"$3\" == \"qqp\" ]]; then
+    python3 eval_line_with_bends.py --base_models_prefix $2 --base_model bert-base-uncased\
+                                    --dataset $3 --models 00 02 03 01 --split validation\
+                                    --num_exs 1024 --experiment_id ${2//\//_}_$3;
+elif [[ \"$3\" == \"paws\" ]]; then
+    python3 eval_line_with_bends.py --base_models_prefix $2 --base_model bert-base-uncased\
+                                    --dataset $3 --models 00 02 03 01 --split dev_and_test\
+                                    --num_exs 1024 --experiment_id ${2//\//_}_$3;
+
+fi;
+
 exit
 "

@@ -13,10 +13,10 @@ import warnings
 def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
     """Return the latest commit with num_steps in its commit message."""
     import string, random
-    
+
     if num_steps is None:
         return None
-    
+
     if tmp_dir is None:
         tmp_dir = "."+''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
     if local_dir is not None:
@@ -28,21 +28,25 @@ def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
             print(f"Creating {tmp_dir}, for loading in git data")
         while True:
             try:
-                repo = Repository(local_dir=tmp_dir, clone_from=path_or_name, 
+                repo = Repository(local_dir=tmp_dir, clone_from=path_or_name,
                                   skip_lfs_files=True)
                 break
             except OSError as e:
                 if "Cloning into" not in str(e):
                     raise e
+                else:
+                    continue
+            except BaseException as e:
+                raise e
         repo = Repo(tmp_dir)
-    
+
     for commit in repo.iter_commits("main"):
         if f"Saving weights and logs of step {num_steps}" == commit.message.strip():
             selected_commit=str(commit)
             break
     else:
         raise ValueError(f"Unable to find any commit with {num_steps} steps")
-    
+
     return selected_commit
 
 def get_model(path_or_name,
@@ -50,10 +54,10 @@ def get_model(path_or_name,
               from_flax: bool = False,
               model_type: Type[AutoModel]=AutoModel,
               **select_revision_kwargs) -> torch.nn.Module:
-    """Returns a sequence classification model loaded from path_or_name. If it can't load 
-    the model from path_or_name, it treats the path_or_name as a state dict file, and tries 
-    to load it using torch.load() after appending ".pt" to it. 
-    
+    """Returns a sequence classification model loaded from path_or_name. If it can't load
+    the model from path_or_name, it treats the path_or_name as a state dict file, and tries
+    to load it using torch.load() after appending ".pt" to it.
+
     NOTE: Wraps the forward() call to accept a single input.
     """
     if len(select_revision_kwargs)!=0:
@@ -64,15 +68,18 @@ def get_model(path_or_name,
     else:
         revision=None #===latest
 
-    try:    
+    try:
         model = model_type.from_pretrained(path_or_name, from_flax=from_flax, revision=revision)
     except (HTTPError, OSError, ValueError) as e:
         print("Encountered Error:", e, flush=True)
         print("Trying to load model from {}.pt".format(path_or_name), flush=True)
-        model = model_type.from_pretrained(base_model, num_labels=3,)
+
         state_dict_path = path_or_name+".pt"
+        params = torch.load(state_dict_path)
+        model = model_type.from_pretrained(base_model, num_labels=params['classifier.weight'].shape[0],)
+
         try:
-            model.load_state_dict(torch.load(state_dict_path))
+            model.load_state_dict(params)
             print("Model loaded from {}.pt".format(path_or_name), flush=True)
         except:
             if "does not appear to have a file named flax_model.msgpack." in str(e):
@@ -83,14 +90,14 @@ def get_model(path_or_name,
                     pass
             else:
                 raise e
-        
-        
+
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(X):
             return func(**X)
         return wrapper
-    
+
     model.forward = decorator(model.forward)
     return model
 
@@ -110,7 +117,7 @@ def get_models_ft_with_prefix(prefix: str, only_digit_suffix:bool=True) -> List[
                     only_digit_suffix=False for including these models too.")
     else:
         final_models = models
-    
+
     return final_models
-                
-    
+
+

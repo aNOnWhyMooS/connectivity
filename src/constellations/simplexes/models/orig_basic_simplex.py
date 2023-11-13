@@ -11,22 +11,24 @@ from gpytorch.kernels import Kernel
 
 from typing import FrozenSet, Iterable, List, Set, Tuple, Optional
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def flatten(lst):
     tmp = [i.contiguous().view(-1, 1) for i in lst]
     return torch.cat(tmp).view(-1)
 
 
-def simplex_parameters(module: nn.Module, 
-                       params: List[Tuple[nn.Module, str]], 
+def simplex_parameters(module: nn.Module,
+                       params: List[Tuple[nn.Module, str]],
                        num_vertices: int):
     """Function to be recursively called on all sub-modules of a module.
     Process:
         We do the following steps for each parameter in the module:
             1. Reads the data from an existing parameter(with name <param_name>) of the module.
-            2. Removes that parameter from that module's parameters. 
+            2. Removes that parameter from that module's parameters.
             3. Add a parameter with name <param_name>_<vertex_no> for each vertex of the simplex.
             4. Set the value of all new parameters to be the same as the one read in 1.
-            5. Append (module, <param_name>) to the params list. 
+            5. Append (module, <param_name>) to the params list.
     NOTE:
         Using the entries of params list, we can access any parameter of any vertex of any sub-module.
     """
@@ -42,14 +44,14 @@ def simplex_parameters(module: nn.Module,
 
         params.append((module, name))
 
-def extract_parameters(module: nn.Module, 
+def extract_parameters(module: nn.Module,
                        params: List[Tuple[nn.Module, str]],):
     """Function to be recursively called on all sub-modules of a module.
     To extract all parameters with their names from a module.
     Process:
         We do the following steps for each parameter in the module:
-            1. Doesn't remove that parameter from that module's parameters. 
-            2. Append (module, <param_name>) to the params list. 
+            1. Doesn't remove that parameter from that module's parameters.
+            2. Append (module, <param_name>) to the params list.
     NOTE:
         Using the entries of params list, we can access any parameter of any vertex of any sub-module.
     """
@@ -62,19 +64,19 @@ cdist = Kernel().covar_dist
 
 class BaseSimplex(nn.Module, abc.ABC):
     """Base class for maintaining a set of vertices in a model. Main purpose:
-    1. Take care of the devices the vertices of the model are on, 
-    2. Maintain the num_vertices and basic utility for adding, importing, saving 
+    1. Take care of the devices the vertices of the model are on,
+    2. Maintain the num_vertices and basic utility for adding, importing, saving
     new vertices.
-    3. Maintain which vertices are fixed, and provide utility for fixing, un-fixing 
+    3. Maintain which vertices are fixed, and provide utility for fixing, un-fixing
     vertices.
     """
 
-    def __init__(self, base: nn.Module, 
-                 num_vertices: int = 2, 
-                 fixed_points: List[bool] = [True, False], 
+    def __init__(self, base: nn.Module,
+                 num_vertices: int = 2,
+                 fixed_points: List[bool] = [True, False],
                  max_gpu_verts: int = 1,
                  *args, **kwargs):
-        
+
         super().__init__()
 
         if len(fixed_points)!=num_vertices:
@@ -99,42 +101,44 @@ class BaseSimplex(nn.Module, abc.ABC):
 
     def _fix_points(self) -> None:
         """To be called after replicating each of the parameters of base,
-        self.num_vertices time. This function detaches all the parameters 
+        self.num_vertices time. This function detaches all the parameters
         belonging to the vertices for which fixed_points[vertex_no] is True.
-        
+
         [WHEN/WHY IS IT NECESSARY TO DO THIS, THOUGH?]
         """
-        for (module, name) in self.params:
+        for i, (module, name) in enumerate(self.params):
             for vertex in range(self.num_vertices):
+                if i==0:
+                    print(f"Fix vertex {vertex}: {self.fixed_points[vertex]}")
                 module.__getattr__(name + "_vertex_" + str(vertex)).detach_()
                 module.__getattr__(name + "_vertex_" + str(vertex)).requires_grad_(not self.fixed_points[vertex])
-    
+
     def parameters(self):
         """Yields all the parameters of the model, vertex wise,
         in the order in which they appear in self.params.
-        
-        NOTE: This order must be maintained if you want to use [i::n_vert] 
+
+        NOTE: This order must be maintained if you want to use [i::n_vert]
         slices of parameters.
         """
         for module, name in self.params:
             for vertex in range(self.num_vertices):
                 yield module.__getattr__(name + "_vertex_" + str(vertex))
-        
+
     def sample(self, coeffs_t) -> None:
-        """Weights all the vertices of the simplex by the (sclaing-)weights specified 
-        in coeffs_t to obtain a sample from the simplex, and then re-sets all the parameters 
-        of self.base that were popped in simplex_parameters() to the weights of the model sampled 
+        """Weights all the vertices of the simplex by the (sclaing-)weights specified
+        in coeffs_t to obtain a sample from the simplex, and then re-sets all the parameters
+        of self.base that were popped in simplex_parameters() to the weights of the model sampled
         from the simplex.
-        
-        NOTE:   
+
+        NOTE:
             1. If base.L1._parameters.pop('weight') was done before, a nn.Parameter was removed from base.L1;
-               where L1 is say a linear layer in the self.base model. But, when re-setting, we only set 
-               base.L1.weight to a torch.Tensor. 
+               where L1 is say a linear layer in the self.base model. But, when re-setting, we only set
+               base.L1.weight to a torch.Tensor.
 
             2. Also, although pop-ing from _parameters, removed 'weight' from the _parameters dict, and the attribute
                base.L1.weight. We only add the attribute base.L1.weight back. And it is not added to _parameters dict.
 
-            3. These new added 'weight' will be passed to F.linear(self.weight, self.bias, input) call within the linear 
+            3. These new added 'weight' will be passed to F.linear(self.weight, self.bias, input) call within the linear
                layer, and hence used for computation.
         """
         for (module, name) in self.params:
@@ -165,14 +169,14 @@ class BaseSimplex(nn.Module, abc.ABC):
                         if param.grad is not None:
                             param.grad.data = param.grad.cpu()
             self.shift_sample_to_gpu=True
-    
+
     def to(self, device: torch.device):
         super().to(device)
         self.use_gpu = "cuda" in str(device.type)
-        if self.num_vertices>self.max_gpu_verts:    
+        if self.num_vertices>self.max_gpu_verts:
             self.adjust_device()
         return self
-    
+
     def cuda(self):
         return self.to(torch.device("cuda:0"))
 
@@ -183,16 +187,16 @@ class BaseSimplex(nn.Module, abc.ABC):
         self.fixed_points.append(False)
         self._fix_points()
         self.adjust_device()
-    
+
     def add_vertex(self, fix_last_vertex: bool, coeffs: Optional[List[float]]=None,):
         """Registers new parameters with the modules within self.base for a new vertex.
         The new vertex's parameters are initialized to the centre of the simplex formed by
         the existing vertices. Additionally, self.num_vertices is incremented by 1."""
         new_vertex = self.num_vertices
-        
+
         if coeffs is None:
             coeffs = [1./self.num_vertices]*self.num_vertices
-        
+
         for (module, name) in self.params:
             data = 0.
             for vertex in range(self.num_vertices):
@@ -201,12 +205,12 @@ class BaseSimplex(nn.Module, abc.ABC):
 
             module.register_parameter(name + "_vertex_" + str(new_vertex),
                                       nn.Parameter(data.clone().detach_().requires_grad_()))
-        
+
         self._after_adding_vertex(fix_last_vertex)
-    
+
     def par_vector(self, vertex_no: int) -> torch.Tensor:
         """Returns a PyTorch tensor of shape (n_pars,) where n_pars is the total
-        number of parameters in a vertex. This tensor contains (model-)weights of vertex_no 
+        number of parameters in a vertex. This tensor contains (model-)weights of vertex_no
         model in self.base."""
         pars = []
         for (module, name) in self.params:
@@ -222,7 +226,7 @@ class BaseSimplex(nn.Module, abc.ABC):
         for vertex in range(self.num_vertices):
             all_vertices_list.append(self.par_vector(vertex))
         return torch.stack(all_vertices_list)
-    
+
     def simplex_volume(self, vertices: Iterable[int]) -> torch.Tensor:
         """Returns the volume of simplex formed by the vertices specified."""
         n_vert = len(vertices)
@@ -233,38 +237,43 @@ class BaseSimplex(nn.Module, abc.ABC):
         norm = (math.factorial(n_vert-1)**2) * (2. ** (n_vert-1))
         simplex_vol = torch.abs(torch.det(mat)).div(norm)
         return simplex_vol
-    
+
     def import_params(self, model: nn.Module, vertex_no: int, fix_last_vertex: bool=False):
         """Imports parameters from model, into a new vertex, if vertex_no==self.num_vertices,
-        else, into the vertex specified by vertex_no. The registered parameters are trainable. 
+        else, into the vertex specified by vertex_no. The registered parameters are trainable.
         """
+        print(f"Importing parameters of {vertex_no}/{self.num_vertices} vertex."
+              f" New vertex will be added: {vertex_no==self.num_vertices}."
+              f" Newly added vertex will be fixed: {fix_last_vertex}")
+
         params= []
         model.apply(
             lambda module: extract_parameters(module, params)
         )
-        
+
         for (from_module, from_name), (to_module, to_name) in zip(params, self.params):
             if from_name!=to_name:
                 raise ValueError("Mis-matched parameter names encountered while importing parameters.")
             if type(from_module) != type(to_module):
                 raise ValueError("Mis-matched parameter types encountered while importing parameters.")
-            
+
             from_tensor = from_module.__getattr__(from_name)
-            sample_to_tensor = to_module.__getattr__(to_name + "_vertex_" + str(vertex_no-1))
-            
+            sample_to_tensor = to_module.__getattr__(to_name+'_vertex_0')
+
             if from_tensor.shape!=sample_to_tensor.shape:
                 raise ValueError(f"Shape {from_tensor.shape} of parameter {from_name} from {type(from_module)}, \
                                    to be copied doesn't match the destination shape {sample_to_tensor.shape}.")
-            
+
+            to_assign = nn.Parameter(from_tensor.clone().detach_().requires_grad_())
             if vertex_no==self.num_vertices:
                 to_module.register_parameter(to_name + "_vertex_" + str(vertex_no),
-                                             nn.Parameter(from_tensor.clone().detach_().requires_grad_()))
+                                             to_assign)
             else:
-                to_module[to_name + "_vertex_" + str(vertex_no)].data = from_tensor.data
-        
+                to_module.__setattr__(to_name + "_vertex_" + str(vertex_no), to_assign)
+
         if vertex_no==self.num_vertices:
             self._after_adding_vertex(fix_last_vertex)
-    
+
     def save_params(self, save_file_prefix: str) -> None:
         print("Saving parameters...", flush=True)
         params_dicts = [collections.OrderedDict() for _ in range(self.num_vertices)]
@@ -277,7 +286,7 @@ class BaseSimplex(nn.Module, abc.ABC):
                 vertex_number = int(search_vertex[2])
                 original_key = k[:search_vertex.span(1)[0]]
                 params_dicts[vertex_number][original_key] = v
-        
+
         for vertex in range(self.num_vertices):
             filename = save_file_prefix + ("0" if vertex<10 else "") + str(vertex) + ".pt"
             torch.save(params_dicts[vertex], filename)
@@ -292,49 +301,50 @@ class BaseSimplex(nn.Module, abc.ABC):
                               This is used to provide an interface between the state_dict and (module, name)
                               structure maintained by the simplex.
             save_file_prefix: The save_file_prefix sent to self.save_params() while saving the params.
-            fix_points:       A list of bools, where a true at i-th index corresponds to the (i+1)-th 
+            fix_points:       A list of bools, where a true at i-th index corresponds to the (i+1)-th
                               loaded vertex being fixed. By default all vertices are trainable.
             verts_to_load:    A list of vertices to load. By default all vertices are loaded.
         NOTE:
             1. Works fine even if existing vertices are there in the simplex.
         """
-        print("Loading parameters...", flush=True)
+        print(f"Loading parameters using prefix {save_file_prefix}...", flush=True)
         if verts_to_load is None:
             verts_to_load = []
             i=0
             while os.path.isfile(save_file_prefix + ("0" if i<10 else "") + str(i) + ".pt"):
                 verts_to_load.append(i)
-        
+                i += 1
+
         for vertex in verts_to_load:
             filename = save_file_prefix + ("0" if vertex<10 else "") + str(vertex) + ".pt"
-            params_dict = torch.load(filename)
+            params_dict = torch.load(filename, map_location=device)
             base_model.load_state_dict(params_dict)
             self.import_params(base_model, vertex)
             print(f"Loaded Parameters for vertex {vertex} from {filename}", flush=True)
-        
+
         if fix_points is not None:
             if len(fix_points) != len(verts_to_load):
                 raise ValueError(f"{fix_points} must be of length {len(verts_to_load)}.")
             self.fixed_points = fix_points
             self._fix_points()
-        
+
 class BasicSimplex(BaseSimplex):
-    
-    def __init__(self, base: nn.Module, 
-                 num_vertices: int = 1, 
-                 fixed_points: List[bool] = [True], 
+
+    def __init__(self, base: nn.Module,
+                 num_vertices: int = 1,
+                 fixed_points: List[bool] = [True],
                  *args, **kwargs):
         super().__init__(base, num_vertices, fixed_points, *args, **kwargs)
-    
+
     def vertex_weights(self)-> torch.Tensor:
-        """Samples random numbers from exponential distribution and normalizes 
+        """Samples random numbers from exponential distribution and normalizes
         them to provide (sclaing-)weights for vertices of the simplex."""
         exps = -torch.rand(self.num_vertices).log()
         return exps / exps.sum()
 
     def total_volume(self) -> torch.Tensor:
-        """Computes the volume of the simplex specified by the parameters of self.base. 
-        See https://en.wikipedia.org/wiki/Cayley%E2%80%93Menger_determinant for 
+        """Computes the volume of the simplex specified by the parameters of self.base.
+        See https://en.wikipedia.org/wiki/Cayley%E2%80%93Menger_determinant for
         further description of how volume is calculated.
         """
         n_vert = self.num_vertices
@@ -357,45 +367,45 @@ class BasicSimplex(BaseSimplex):
 
     def add_vert(self, fix_last_vertex: bool = False):
         return self.add_vertex(fix_last_vertex)
-        
+
 class SimplicialComplex(BaseSimplex):
-    def __init__(self, base: nn.Module, 
-                 num_vertices: int = 1, 
-                 fixed_points: List[bool] = [True], 
+    def __init__(self, base: nn.Module,
+                 num_vertices: int = 1,
+                 fixed_points: List[bool] = [True],
                  *args, **kwargs):
-        """To design a simplicial complex. 
+        """To design a simplicial complex.
         NOTE:
             All vertices are divided among two categories:
                 - base vertices, which are pre-defined pre-trained
-                models that are used to initialize each simplex in 
+                models that are used to initialize each simplex in
                 the complex.
                 - connecting vertices, which are trained/'adjusted'
-                as a part of the complex, and are essentially used to 
+                as a part of the complex, and are essentially used to
                 form the simplices.
         STATE-MAINTAINED:
             adj_simplicial_complex: Adjacency matrix of the simplicial complex.
-            _pc_connected_comps:    A list of connected components of the simplicial complex. 
+            _pc_connected_comps:    A list of connected components of the simplicial complex.
                                     Re-computed in self._connected_comps(), whenever new vertex
                                     is added.
         """
         super().__init__(base, num_vertices, fixed_points, *args, **kwargs)
-                
+
         self.adj_simplicial_complex = {i : [0]*(i)+[1]+[0]*(num_vertices-1-i)
                                        for i in range(num_vertices) }
-        # ^ each simplex in the simplicial complex is meant to be stored as a  
+        # ^ each simplex in the simplicial complex is meant to be stored as a
         # bit mask over all the vertices, including base vertices and connectors.
 
     def vertex_weights(self)-> torch.Tensor:
         """Picks a random simplex from the ones specified from simplicial complex
         and samples a random model from this simplex.
         Process:
-            The model is sampled by specifying random (scaling-)weights for each of the vertices of 
-            the selected simplex. Random numbers are sampled from an exponential distribution with 
+            The model is sampled by specifying random (scaling-)weights for each of the vertices of
+            the selected simplex. Random numbers are sampled from an exponential distribution with
             mean parameter(λ) 1 and normalized to obtain the (scaling-)weights.
         Returns:
             The list of (scaling-)weights is returned.
-        
-        NOTE: This function assumes that there exists a bijection between each fixed vertex and 
+
+        NOTE: This function assumes that there exists a bijection between each fixed vertex and
         the simplexes in the simplicial complex.
         """
         ## pick a simplex to sample from ##
@@ -407,10 +417,10 @@ class SimplicialComplex(BaseSimplex):
         total = sum(vert_weights)
         vert_weights = [exp/total for exp in vert_weights]
         return vert_weights
-    
+
     def add_vert(self):
         raise NotImplementedError("Use add_base_vertex() or add_conn_vertex() instead.")
-    
+
     def add_base_vertex(self, model: nn.Module, fix_last_vertex: bool = False):
         """Initializes a new simplex within the similicial complex.
         Registers new parameters with the modules within self.base for a new base vertex.
@@ -420,14 +430,14 @@ class SimplicialComplex(BaseSimplex):
             model:    the model which needs to be the base vertex of the new simplex.
         """
         new_vertex = self.num_vertices
-        
+
         for i in range(self.num_vertices):
             self.adj_simplicial_complex[i].append(not self.fixed_points[i])
-        
+
         self.adj_simplicial_complex[new_vertex] = [0]*self.num_vertices + [1]
 
         self.import_params(model, new_vertex, fix_last_vertex)
-        
+
         #Fix Base Vertex
         self.fixed_points[-1] = True
         self._fix_points()
@@ -454,16 +464,16 @@ class SimplicialComplex(BaseSimplex):
 
     def _connected_comps(self) -> Set[FrozenSet[int]]:
         """Returns Pre-Computed completely connected components of the simplicial complex,
-        if num_vertices is same as the number of vertices in the simplicial complex when it 
+        if num_vertices is same as the number of vertices in the simplicial complex when it
         was last computed, otherwise computes them again.
         """
         if hasattr(self, "_pc_connected_comps_for_vertices") and hasattr(self, "_pc_connected_comps"):
             if self._pc_connected_comps_for_vertices==self.num_vertices:
                 return self._pc_connected_comps
-        
+
         final_sets = set()
         sets = frozenset({frozenset([i]) for i in range(self.num_vertices)})
-        
+
         while len(sets)!=0:
             new_sets = set()
             for sett in sets:
@@ -480,17 +490,17 @@ class SimplicialComplex(BaseSimplex):
                 if not expanded:
                     final_sets.add(sett)
             sets = frozenset(new_sets)
-        
+
         self._pc_connected_comps = final_sets
         self._pc_connected_comps_for_vertices = self.num_vertices
         return final_sets
 
     def total_volume(self) -> torch.Tensor:
         """Computes the total volume of the simplicial complex.
-        See https://en.wikipedia.org/wiki/Cayley%E2%80%93Menger_determinant for 
+        See https://en.wikipedia.org/wiki/Cayley%E2%80%93Menger_determinant for
         further description of how volume is calculated.
 
-        NOTE: This function assumes that there exists a bijection between each fixed vertex and 
+        NOTE: This function assumes that there exists a bijection between each fixed vertex and
         the simplexes in the simplicial complex.
         """
         total_vol = 0
@@ -505,26 +515,28 @@ class SimplicialComplex(BaseSimplex):
                     sampled from. Kindly check adjacency matrix: {self.adj_simplicial_complex}. And the computed\
                     simplices: {simplices}.")
         return total_vol
-    
+
     def save_params(self, save_file_prefix: str) -> None:
         """Saves the parameters and adjacency matrix of the simplicial-complex vertex-by-vertex"""
         super().save_params(save_file_prefix)
         print("Saving adjacency matrix..", flush=True)
+        print("Check num vertices:", self.num_vertices)
+        print("Check adjacency:", self.adj_simplicial_complex)
         with open(save_file_prefix + "_adjacency.txt", "w") as f:
             for i in range(self.num_vertices):
                 f.write(str(self.adj_simplicial_complex[i]) + "\n")
-    
+
     @classmethod
-    def from_pretrained(cls, base_model:nn.Module, save_file_prefix: str, 
+    def from_pretrained(cls, base_model:nn.Module, save_file_prefix: str,
                         fix_points: Optional[List[bool]]=None) -> "SimplicialComplex":
         """Loads the parameters and adjacency matrix of the simplicial-complex vertex-by-vertex.
-        Assumes no existing vertices in the simplicial complex. Reads the vertex numbered 
+        Assumes no existing vertices in the simplicial complex. Reads the vertex numbered
         state dict files and the adjacency matrix."""
         base_model_cp = copy.deepcopy(base_model)
-        complex_model = cls(base_model, num_vertices=0, fixed_points=[])
-        super().load_params(base_model_cp, save_file_prefix, fix_points)
-        with open(save_file_prefix + "_adjacency.txt", "w") as f:
+        with open(save_file_prefix + "_adjacency.txt", "r") as f:
             lines = f.readlines()
+        complex_model = cls(base_model, num_vertices=len(lines), fixed_points=fix_points)
+        super().load_params(complex_model, base_model_cp, save_file_prefix, fix_points)
         for i, line in enumerate(lines):
             complex_model.adj_simplicial_complex[i] = ast.literal_eval(line.strip())
         return complex_model
