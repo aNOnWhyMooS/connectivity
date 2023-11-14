@@ -180,7 +180,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--num_exs",
         type=int,
-        default=1000,
+        default=512,
         help="number of examples used to evaluate each model on \
               the linear interpolation curve.",
     )

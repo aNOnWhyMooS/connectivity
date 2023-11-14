@@ -28,11 +28,11 @@ echo \"Dataset: $3\";
 if [[ \"$3\" == \"qqp\" ]]; then
     python3 eval_line_with_bends.py --base_models_prefix $2 --base_model bert-base-uncased\
                                     --dataset $3 --models 00 02 03 01 --split validation\
-                                    --num_exs 1024 --experiment_id ${2//\//_}_$3;
+                                    --num_exs 512 --experiment_id ${2//\//_}_$3;
 elif [[ \"$3\" == \"paws\" ]]; then
     python3 eval_line_with_bends.py --base_models_prefix $2 --base_model bert-base-uncased\
                                     --dataset $3 --models 00 02 03 01 --split dev_and_test\
-                                    --num_exs 1024 --experiment_id ${2//\//_}_$3;
+                                    --num_exs 512 --experiment_id ${2//\//_}_$3;
 
 fi;
 
