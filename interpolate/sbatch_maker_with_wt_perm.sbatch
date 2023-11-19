@@ -39,7 +39,7 @@ export HF_METRICS_CACHE=\"/scratch/$1/.cache/huggingface/metrics\"
 mkdir ../../constellations//logs/$6/$2_interpol@$4steps/
 echo $suffixes
 python3 maker_runner.py --all_suffixes $suffixes\
-	                    --base_models_prefix $7 --save_file ../../constellations/logs/$6/$2_interpol@$4steps/interpol_$2_$3.pkl\
+	                    --base_models_prefix $7 --save_file ../../constellations/logs/$6/$2_permuted_interpol@$4steps/interpol_$2_$3.pkl\
 						--dataset $2 --split $3 --num_steps $4 --free_overlays_begin $5 --user_name $1 --log_dir $6/$2_permuted_interpol@$4steps\
 						--from_model_type $8 --base_model $9 --permute_wts
 exit
