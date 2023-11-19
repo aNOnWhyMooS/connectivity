@@ -1,12 +1,12 @@
 import functools, os, re
 import shutil
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Literal
 from urllib.error import HTTPError
 
 import torch
 from git import Repo
 from huggingface_hub import Repository, HfApi
-from transformers import AutoModelForSequenceClassification, AutoModel
+from transformers import AutoModelForSequenceClassification, AutoModel, FlaxAutoModelForSequenceClassification
 import warnings
 
 @functools.lru_cache(125)
@@ -53,6 +53,7 @@ def get_model(path_or_name,
               base_model: Optional[str]="bert-base-uncased",
               from_flax: bool = False,
               model_type: Type[AutoModel]=AutoModel,
+              ret_type: Literal['flax', 'pt'] = 'pt',
               **select_revision_kwargs) -> torch.nn.Module:
     """Returns a sequence classification model loaded from path_or_name. If it can't load
     the model from path_or_name, it treats the path_or_name as a state dict file, and tries
@@ -69,12 +70,20 @@ def get_model(path_or_name,
         revision=None #===latest
 
     try:
-        model = model_type.from_pretrained(path_or_name, from_flax=from_flax, revision=revision)
+        if ret_type=='pt':
+            model = model_type.from_pretrained(path_or_name, from_flax=from_flax, revision=revision)
+        elif ret_type=='flax':
+            model = model_type.from_pretrained(path_or_name, from_pt=(not from_flax), revision=revision)
+        else:
+            raise ValueError(f'unknown ret type: {ret_type}. Should be pt or flax.')
+    
     except (HTTPError, OSError, ValueError) as e:
         print("Encountered Error:", e, flush=True)
         print("Trying to load model from {}.pt".format(path_or_name), flush=True)
 
         state_dict_path = path_or_name+".pt"
+        if ret_type=='flax':
+            raise NotImplementedError('Can\'t load flax model from .pt file.')
         params = torch.load(state_dict_path)
         model = model_type.from_pretrained(base_model, num_labels=params['classifier.weight'].shape[0],)
 
@@ -102,6 +111,9 @@ def get_model(path_or_name,
     return model
 
 get_sequence_classification_model = functools.partial(get_model,model_type=AutoModelForSequenceClassification)
+get_flax_seq_classification_model = functools.partial(get_model,
+                                                      model_type=FlaxAutoModelForSequenceClassification,
+                                                      ret_type='flax')
 
 def get_models_ft_with_prefix(prefix: str, only_digit_suffix:bool=True) -> List[str]:
     hf_api = HfApi()

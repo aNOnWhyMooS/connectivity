@@ -1,10 +1,10 @@
 cmd = "\"python3 interpolate_1d.py --base_model {9} --from_model_type {8}\
     --suffix_pairs {0} --base_models_prefix {1} --save_file {2} --dataset {3} --split {4}\
-    --num_steps {5} --experiment_id interpolate_{7}_{3}_{4}_{5}_{6} #--permute_wts\""
+    --num_steps {5} --experiment_id interpolate_{7}_{3}_{4}_{5}_{6}\""
 
 cmd_without_steps = "\"python3 interpolate_1d.py --base_model {9} --from_model_type {8}\
     --suffix_pairs {0} --base_models_prefix {1} --save_file {2} --dataset {3} --split {4}\
-    --experiment_id interpolate_{7}_{3}_{4}_{5}_{6} #--permute_wts --num_steps {5}\""
+    --experiment_id interpolate_{7}_{3}_{4}_{5}_{6}\""
 
 import argparse  
 import subprocess
@@ -114,6 +114,12 @@ def get_parser():
         type=str,
     )
     
+    parser.add_argument(
+        "--permute_wts",
+        action='store_true',
+        help='Will permute weights if specified.'
+    )
+
     return parser
 
 if __name__=="__main__":
@@ -145,6 +151,9 @@ if __name__=="__main__":
     if args.num_steps is None:
         cmd = cmd_without_steps
 
+    if args.permute_wts:
+        cmd = cmd[:-1] + f' --do_perm' + cmd[-1]
+    
     for i in range(args.total_jobs):
         cmds.append(cmd.format(" ".join([str(elem) for elem in suffix_pairs[0:step_size]]),
                                 args.base_models_prefix, args.save_file[:-4]+str(i)+".pkl", args.dataset, args.split,

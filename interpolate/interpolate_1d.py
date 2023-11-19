@@ -9,9 +9,10 @@ import torch
 import torch.nn as nn
 from datasets import load_metric
 from transformers import AutoTokenizer
+from match_finder import match_params
 
 from constellations.model_loaders.modelling_utils import get_criterion_fn, get_logits_converter, get_pred_fn, linear_comb
-from constellations.model_loaders.load_model import get_sequence_classification_model
+from constellations.model_loaders.load_model import get_sequence_classification_model, get_flax_seq_classification_model
 from constellations.dataloaders.loader import get_loader
 from constellations.utils.eval_utils import eval
 
@@ -50,24 +51,28 @@ def main(args):
     else:
         metric = load_metric("accuracy", experiment_id=args.experiment_id)
 
-    w1 = get_sequence_classification_model(
-            args.base_models_prefix + args.indices[0], from_flax=(args.from_model_type=="flax"),
-            num_steps=args.num_steps, local_dir=(None if args.local_dir_prefix is None
-                                                      else args.local_dir_prefix + args.indices[0]),
-        ).state_dict()
+    model1_kwargs = {'path_or_name': args.base_models_prefix + args.indices[0], 
+                     'from_flax' : (args.from_model_type=="flax"),
+                     'num_steps' : args.num_steps, 
+                     'local_dir' : (None if args.local_dir_prefix is None
+                                    else args.local_dir_prefix + args.indices[0]),}
+    
+    model2_kwargs = {'path_or_name': args.base_models_prefix + args.indices[1], 
+                     'from_flax' : (args.from_model_type=="flax"),
+                     'num_steps' : args.num_steps, 
+                     'local_dir' : (None if args.local_dir_prefix is None
+                                    else args.local_dir_prefix + args.indices[1]),}
+    if args.do_perm:
+        m1 = get_flax_seq_classification_model(**model1_kwargs)
+        m2 = get_flax_seq_classification_model(**model2_kwargs)
+        m1, m2 = match_params(m1, m2)
+        w1, w2 = m1.state_dict(), m2.state_dict()
+    else:
+        w1 = get_sequence_classification_model(**model1_kwargs).state_dict()
+        w2 = get_sequence_classification_model(**model2_kwargs).state_dict()
 
-    model = get_sequence_classification_model(
-            args.base_models_prefix + args.indices[0], from_flax=(args.from_model_type=="flax"),
-            num_steps=args.num_steps, local_dir=(None if args.local_dir_prefix is None
-                                                      else args.local_dir_prefix + args.indices[0]),
-        )
-
-    w2 = get_sequence_classification_model(
-            args.base_models_prefix  + args.indices[1], from_flax=(args.from_model_type=="flax"),
-            num_steps=args.num_steps, local_dir=(None if args.local_dir_prefix is None
-                                                      else args.local_dir_prefix + args.indices[1]),
-        ).state_dict()
-
+    model = get_sequence_classification_model(**model1_kwargs)
+    
     euclidean_dist = torch.sqrt(sum([torch.sum((v1-v2)*(v1-v2)) for (_, v1), (_, v2) in zip(w1.items(), w2.items())])).item()
     print(f"Euclidean distance between {args.indices[0]} and {args.indices[1]}: {euclidean_dist}.", flush=True)
     print(f'Interpolating between {args.indices[0]} and {args.indices[1]} on {args.dataset}', flush=True)
@@ -211,6 +216,13 @@ if __name__ == '__main__':
        choices=["pt", "flax", "tf"],
        help="Type of model on HF hub",
        default="flax",
+    )
+
+    parser.add_argument(
+        "--do_perm",
+        action="store_true",
+        help="If specified, permutation will be done, before\
+            interpolating between models."
     )
 
     args = parser.parse_args()

@@ -8,13 +8,7 @@
 #SBATCH --time=0-00:02:00
 nvidia-smi
 
-from_suffixes=""
-for i in "20 35 16 9"
-do
-	from_suffixes="${from_suffixes} ep25_qqp_berts-${i}";
-done;
-
-to_suffixes=""
+suffixes=""
 half_saved_models="6 22 36 47 48 49 63"
 for i in `seq 0 99`
 do
@@ -26,14 +20,11 @@ do
           is_half_saved=true
        fi
     done
-	echo $is_half_saved
-	if [ ! $is_half_saved = true ]; then
-    	to_suffixes="${to_suffixes} bert_ft_qqp_6ep-${i}"
-	fi;
+echo $is_half_saved
+if [ ! $is_half_saved = true ]; then
+    suffixes="${suffixes} ${i}"
+fi;
 done
-
-echo "From suffixes: ${from_suffixes}";
-echo "To Suffixes: ${to_suffixes}";
 
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
@@ -47,9 +38,9 @@ export TRANSFORMERS_CACHE=\"/scratch/$1/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/$1/.cache/huggingface/metrics\"
 mkdir ../../constellations//logs/$6/$2_interpol@$4steps/
 echo $suffixes
-python3 maker_runner.py --from_model_suffixes $from_suffixes --to_model_suffixes $to_suffixes\
+python3 maker_runner.py --all_suffixes $suffixes\
 	                    --base_models_prefix $7 --save_file ../../constellations/logs/$6/$2_interpol@$4steps/interpol_$2_$3.pkl\
-						--dataset $2 --split $3 --free_overlays_begin $5 --user_name $1 --log_dir $6/$2_interpol@$4steps\
-						--from_model_type $8 --base_model $9 #--num_steps $4
+						--dataset $2 --split $3 --num_steps $4 --free_overlays_begin $5 --user_name $1 --log_dir $6/$2_interpol@$4steps\
+						--from_model_type $8 --base_model $9 --permute_wts
 exit
 "
