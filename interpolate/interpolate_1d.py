@@ -65,14 +65,15 @@ def main(args):
     if args.do_perm:
         m1 = get_flax_seq_classification_model(**model1_kwargs)
         m2 = get_flax_seq_classification_model(**model2_kwargs)
-        m1, m2 = match_params(m1, m2)
+        m1, m2 = match_params(m1, m2, model_type = (
+            'roberta' if 'roberta' in args.base_model else 'bert'))
         w1, w2 = m1.state_dict(), m2.state_dict()
     else:
         w1 = get_sequence_classification_model(**model1_kwargs).state_dict()
         w2 = get_sequence_classification_model(**model2_kwargs).state_dict()
 
     model = get_sequence_classification_model(**model1_kwargs)
-    
+
     euclidean_dist = torch.sqrt(sum([torch.sum((v1-v2)*(v1-v2)) for (_, v1), (_, v2) in zip(w1.items(), w2.items())])).item()
     print(f"Euclidean distance between {args.indices[0]} and {args.indices[1]}: {euclidean_dist}.", flush=True)
     print(f'Interpolating between {args.indices[0]} and {args.indices[1]} on {args.dataset}', flush=True)
