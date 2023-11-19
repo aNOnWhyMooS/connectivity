@@ -36,7 +36,7 @@ source /ext3/env.sh
 export HF_DATASETS_CACHE=\"/scratch/$1/.cache/huggingface/datasets\"
 export TRANSFORMERS_CACHE=\"/scratch/$1/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/$1/.cache/huggingface/metrics\"
-mkdir ../../constellations//logs/$6/$2_interpol@$4steps/
+mkdir ../../constellations//logs/$6/$2_permuted_interpol@$4steps/
 echo $suffixes
 python3 maker_runner.py --all_suffixes $suffixes\
 	                    --base_models_prefix $7 --save_file ../../constellations/logs/$6/$2_permuted_interpol@$4steps/interpol_$2_$3.pkl\
