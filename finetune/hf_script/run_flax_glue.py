@@ -331,7 +331,7 @@ def main():
             repo_name = training_args.hub_model_id
         print("Creating repo with name:", repo_name)
         HfApi().create_repo(repo_name, token=training_args.hub_token)
-        repo = Repository(training_args.output_dir, clone_from=repo_name, 
+        repo = Repository(training_args.output_dir, clone_from=repo_name,
                           use_auth_token=training_args.hub_token)
 
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
@@ -388,8 +388,8 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path, use_fast=not model_args.use_slow_tokenizer
     )
-    model = FlaxAutoModelForSequenceClassification.from_pretrained(model_args.model_name_or_path, 
-                                                                   config=config, from_pt=True, 
+    model = FlaxAutoModelForSequenceClassification.from_pretrained(model_args.model_name_or_path,
+                                                                   config=config, from_pt=True,
                                                                    seed=training_args.seed)
 
     # Preprocessing the datasets
@@ -542,7 +542,7 @@ def main():
     exp_id = (''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
               +"_".join(training_args.output_dir.split("/"))
               )
-    
+
     if data_args.task_name is not None:
         metric = load_metric("glue", data_args.task_name, experiment_id=exp_id)
     else:
@@ -550,7 +550,7 @@ def main():
 
     logger.info(f"===== Starting training ({num_epochs} epochs) =====")
     train_time = 0
-    
+
     # make sure weights are replicated on each device
     state = replicate(state)
 
@@ -665,4 +665,5 @@ def main():
 
 
 if __name__ == "__main__":
+    print('GPU devices detected by Jax:', jax.devices('gpu'))
     main()
