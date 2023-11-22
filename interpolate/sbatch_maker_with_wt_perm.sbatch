@@ -9,8 +9,8 @@
 nvidia-smi
 
 suffixes=""
-half_saved_models="6 22 36 47 48 49 63"
-for i in `seq 0 99`
+half_saved_models="" #"6 22 36 47 48 49 63"
+for i in `seq 0 79`
 do
     is_half_saved=false
     for j in $half_saved_models
