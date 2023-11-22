@@ -26,18 +26,8 @@ def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
             shutil.rmtree(tmp_dir)
         except FileNotFoundError:
             print(f"Creating {tmp_dir}, for loading in git data")
-        while True:
-            try:
-                repo = Repository(local_dir=tmp_dir, clone_from=path_or_name,
-                                  skip_lfs_files=True)
-                break
-            except OSError as e:
-                if "Cloning into" not in str(e):
-                    raise e
-                else:
-                    continue
-            except BaseException as e:
-                raise e
+        repo = Repository(local_dir=tmp_dir, clone_from=path_or_name,
+                          skip_lfs_files=True)
         repo = Repo(tmp_dir)
 
     for commit in repo.iter_commits("main"):
