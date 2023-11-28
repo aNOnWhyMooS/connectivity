@@ -20,8 +20,8 @@ export HF_DATASETS_CACHE=\\"/scratch/{2}/.cache/huggingface/datasets\\"
 export TRANSFORMERS_CACHE=\\"/scratch/{2}/.cache/huggingface/transformers\\"
 export HF_METRICS_CACHE=\\"/scratch/{2}/.cache/huggingface/metrics\\"
 export TOKENIZERS_PARALLELISM=false;
-pip3 install git+https://github.com/Jeevesh8/trfrmr_weight_matching#subdirectory=src
-python3 -m pip install -e ../src/
+#pip3 install git+https://github.com/Jeevesh8/trfrmr_weight_matching#subdirectory=src
+#python3 -m pip install -e ../src/
 {1}
 exit
 "
