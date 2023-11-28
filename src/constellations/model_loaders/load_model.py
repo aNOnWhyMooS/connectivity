@@ -18,7 +18,7 @@ def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
         return None
 
     if tmp_dir is None:
-        tmp_dir = "."+''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
+        tmp_dir = "_"+''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
     if local_dir is not None:
         repo = Repo(local_dir)
     else:
