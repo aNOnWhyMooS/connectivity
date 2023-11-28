@@ -6,7 +6,7 @@ sbatch_format = """#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --mem=128G
-#SBATCH --time=1-23:59:59
+#SBATCH --time=0-08:59:59
 nvidia-smi
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
