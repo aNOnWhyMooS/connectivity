@@ -114,6 +114,29 @@ class ModelArguments:
         },
     )
 
+    another_init_seed : Optional[int] = field(
+        default=None,
+        metadata={
+            "help": "If specified, the top head is initalised as coeff* the initialisation for this seed + (1-coeff) *"
+            " the initialisation for training_args.seed."
+        },
+    )
+
+    another_seed_coeff: Optional[float] = field(
+        default=None,
+        metadata={
+            "help": "This coefficient will be used to scale the proportion of initialization of "
+        },
+    )
+
+    def __post_init__(self):
+        if (self.another_init_seed and not self.another_seed_coeff or
+            not self.another_init_seed and self.another_seed_coeff):
+            raise AssertionError('Both another_init_seed and another_seed_coeff'
+                                 'must be specified. One of them is missing. Check:'
+                                 f' another_init_seed: {self.another_init_seed},'
+                                 f' another_seed_coeff: {self.another_seed_coeff}')
+
 
 @dataclass
 class DataTrainingArguments:
@@ -199,6 +222,22 @@ class DataTrainingArguments:
                 assert extension in ["csv", "json"], "`validation_file` should be a csv or a json file."
         self.task_name = self.task_name.lower() if type(self.task_name) == str else self.task_name
 
+
+def reinit_model(
+    model: FlaxAutoModelForSequenceClassification,
+    model_args: ModelArguments,
+    model_init_args: Dict[str, Any],
+) -> FlaxAutoModelForSequenceClassification:
+    if model_args.another_init_seed:
+        if 'seed' not in model_init_args:
+            logger.warning('Taking combination of a model head initialised'
+                           ' without seed and another with seed.')
+        model_init_args['seed'] = model_args.another_init_seed
+        model1 = FlaxAutoModelForSequenceClassification.from_pretrained(**model_init_args)
+        coeff = model_args.another_seed_coeff
+        model.params = jax.tree_util.tree_map(lambda x, y: coeff*x+(1-coeff)*y,
+                                              model1.params, model.params)
+    return model
 
 def create_train_state(
     model: FlaxAutoModelForSequenceClassification,
@@ -399,10 +438,11 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path, use_fast=not model_args.use_slow_tokenizer
     )
-    model = FlaxAutoModelForSequenceClassification.from_pretrained(model_args.model_name_or_path,
-                                                                   config=config, from_pt=True,
-                                                                   seed=training_args.seed)
+    model_init_args = {'model_name_or_path': model_args.model_name_or_path,
+                       'config': config, 'from_pt': True, 'seed': training_args.seed}
+    model = FlaxAutoModelForSequenceClassification.from_pretrained(**model_init_args)
 
+    model = reinit_model(model_args, model, model_init_args)
     # Preprocessing the datasets
     if data_args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
