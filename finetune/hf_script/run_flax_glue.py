@@ -296,6 +296,10 @@ def glue_eval_data_collator(dataset: Dataset, batch_size: int):
 
         yield batch
 
+def pytree_norm(pytree):
+    leaves = jax.tree_util.tree_leaves(pytree)
+    flat_norm = jnp.sqrt(sum(jnp.vdot(leaf, leaf) for leaf in leaves))
+    return flat_norm
 
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
@@ -527,7 +531,9 @@ def main():
         loss, grad = grad_fn(state.params)
         grad = jax.lax.pmean(grad, "batch")
         new_state = state.apply_gradients(grads=grad)
-        metrics = jax.lax.pmean({"loss": loss, "learning_rate": learning_rate_fn(state.step)}, axis_name="batch")
+        metrics = jax.lax.pmean({"loss": loss, "learning_rate": learning_rate_fn(state.step),
+                                 "grad_norm": pytree_norm(grad), "first_moment_norm": pytree_norm(state.opt_state[1][0].mu),
+                                 "second_moment_norm": pytree_norm(state.opt_state[1][0].nu)}, axis_name="batch")
         return new_state, metrics, new_dropout_rng
 
     p_train_step = jax.pmap(train_step, axis_name="batch", donate_argnums=(0,))
