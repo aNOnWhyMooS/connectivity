@@ -180,6 +180,13 @@ class DataTrainingArguments:
         },
     )
 
+    only_first_n: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": "Will only train for first n steps if specified."
+        },
+    )
+
     def __post_init__(self):
         if self.task_name is None and self.train_file is None and self.validation_file is None:
             raise ValueError("Need either a dataset name or a training/validation file.")
@@ -570,9 +577,12 @@ def main():
         if training_args.push_to_hub:
             repo.push_to_hub(commit_message=f"Saving weights and logs of step 0", blocking=False)
 
+    exit_training = False
     epochs = tqdm(range(num_epochs), desc=f"Epoch ... (0/{num_epochs})", position=0)
     for epoch in epochs:
 
+        if exit_training:
+            break
         train_start = time.time()
         train_metrics = []
 
@@ -661,6 +671,9 @@ def main():
                     if training_args.push_to_hub:
                         repo.push_to_hub(commit_message=f"Saving weights and logs of step {cur_step}", blocking=False)
             epochs.desc = f"Epoch ... {epoch + 1}/{num_epochs}"
+            if data_args.only_first_n and data_args.only_first_n >= cur_step:
+                exit_training = True
+                break
 
     # save the eval metrics in json
     if jax.process_index() == 0:
