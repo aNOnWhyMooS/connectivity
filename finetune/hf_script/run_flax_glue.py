@@ -438,11 +438,11 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path, use_fast=not model_args.use_slow_tokenizer
     )
-    model_init_args = {'model_name_or_path': model_args.model_name_or_path,
+    model_init_args = {'pretrained_model_name_or_path': model_args.model_name_or_path,
                        'config': config, 'from_pt': True, 'seed': training_args.seed}
     model = FlaxAutoModelForSequenceClassification.from_pretrained(**model_init_args)
 
-    model = reinit_model(model_args, model, model_init_args)
+    model = reinit_model(model, model_args, model_init_args)
     # Preprocessing the datasets
     if data_args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
