@@ -8,3 +8,4 @@ from huggingface_hub import HfApi
 
 hf_api = HfApi(token=sys.argv[1])
 hf_api.delete_repo(sys.argv[2])
+print(f'Successfully deleted: {sys.argv[2]}')
