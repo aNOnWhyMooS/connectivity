@@ -9,6 +9,14 @@
 #SBATCH --time=1-23:59:59
 #nvidia-smi
 
+<<usage
+Finetunes a sequence classification model.
+Usage:
+  sbatch --array=0-10 finetune.sbatch <hub_token> <pretrained model>\
+                                      <output_dir_prefix> <dataset>
+usage
+
+
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
 OVERLAY_FILE=/scratch/$USER/mode-conn-10/mode-conn-10.ext3:ro
 
