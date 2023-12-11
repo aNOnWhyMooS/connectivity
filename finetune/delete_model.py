@@ -14,7 +14,7 @@ try:
     print(f'Successfully deleted: {sys.argv[2]}')
 except utils.RepositoryNotFoundError:
     models = [model.id for model in hf_api.list_models(search=sys.argv[2])]
-    should_delete = input(f'Delete {len(models)} models having {sys.argv[2]} ? (y/n):')
+    should_delete = (input(f'Delete {len(models)} models having {sys.argv[2]} ? (y/n):')=='y')
     if should_delete:
         for model in models:
             hf_api.delete_repo(sys.argv[2])
