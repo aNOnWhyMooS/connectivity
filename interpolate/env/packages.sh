@@ -11,3 +11,6 @@ CONDA_OVERRIDE_CUDA="11.8" conda install jaxlib=*=*cuda* jax cuda-nvcc -c conda-
 conda install -c conda-forge flax -y
 conda install -c conda-forge git-lfs -y
 pip install -U accelerate datasets tensorboard tensorflow
+pip install git+https://github.com/Jeevesh8/trfrmr_weight_matching/#subdirectory=src
+pip install git+https://github.com/anonwhymoos/connectivity@cur_dev#subdirectory=src
+pip install GitPython sentencepiece tabulate rouge_score scikit-image scikit-learn
