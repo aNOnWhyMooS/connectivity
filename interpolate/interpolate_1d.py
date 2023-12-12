@@ -19,12 +19,10 @@ from constellations.utils.eval_utils import eval
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(args):
-    is_feather_bert = (("feather" in args.base_models_prefix+args.indices[0])
-                    or ("feather" in args.base_models_prefix+args.indices[1]))
+    is_feather_bert = (("feather" in args.models[0])
+                    or ("feather" in args.models[1]))
 
     if is_feather_bert:
-        assert args.num_steps==36813 or args.num_steps is None
-        args.num_steps=None
         mnli_label_dict = {"contradiction": 0, "entailment": 1, "neutral": 2}
     else:
         mnli_label_dict = {"contradiction": 2, "entailment": 0, "neutral": 1}
@@ -51,13 +49,13 @@ def main(args):
     else:
         metric = load_metric("accuracy", experiment_id=args.experiment_id)
 
-    model1_kwargs = {'path_or_name': args.base_models_prefix + args.indices[0], 
+    model1_kwargs = {'path_or_name': args.models[0], 
                      'from_flax' : (args.from_model_type=="flax"),
-                     'num_steps' : args.num_steps, }
+                     'num_steps' : args.steps[0], }
     
-    model2_kwargs = {'path_or_name': args.base_models_prefix + args.indices[1], 
+    model2_kwargs = {'path_or_name': args.models[1], 
                      'from_flax' : (args.from_model_type=="flax"),
-                     'num_steps' : args.num_steps, }
+                     'num_steps' : args.steps[1], }
 
     if args.do_perm:
         m1 = get_flax_seq_classification_model(**model1_kwargs)
@@ -72,8 +70,8 @@ def main(args):
     model = get_sequence_classification_model(**model1_kwargs)
 
     euclidean_dist = torch.sqrt(sum([torch.sum((v1-v2)*(v1-v2)) for (_, v1), (_, v2) in zip(w1.items(), w2.items())])).item()
-    print(f"Euclidean distance between {args.indices[0]} and {args.indices[1]}: {euclidean_dist}.", flush=True)
-    print(f'Interpolating between {args.indices[0]} and {args.indices[1]} on {args.dataset}', flush=True)
+    print(f"Euclidean distance between {args.models[0]}@{args.steps[0]} and {args.models[1]}@{args.steps[1]}: {euclidean_dist}.", flush=True)
+    print(f'Interpolating between {args.models[0]}@{args.steps[0]} and {args.models[1]}@{args.steps[1]} on {args.dataset}', flush=True)
 
     xy_min = (0,1)
     xy_max = (1,0)
@@ -107,19 +105,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Interpolate between model pairs.")
 
     parser.add_argument(
-        "--base_models_prefix",
+        "--models",
         type=str,
         required=True,
-        help="Common prefix of models to be loaded(e.g. 'connectivity/bert_ft_qqp-')",
+        help="Comma separated list of models to interpolate between.",
     )
 
     parser.add_argument(
         "--base_model",
         type=str,
         default="bert-base-uncased",
-        help="Model name to be used to load the tokenizer \
-              for the models, if tokenizer not found in\
-              args.base_models_prefix+args.models[i]. (default: bert-base-uncased)",
+        help="Model name to be used to load the tokenizer "
+             "(default: bert-base-uncased).",
     )
 
     parser.add_argument(
@@ -174,29 +171,13 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        "--num_steps",
-        type=int,
-        help="Load model on the remote at these number of steps, \
-            for evaluation. A commit with this number of '\d+ steps' in its\
+        "--steps",
+        type=str,
+        help="Comma separated pair of steps at which to fetch\
+            the two models specified in args.models.\
+            A commit with this number of ' \d+ steps' in its\
             commit message, must be present on the remote. By default, latest\
             model will be loaded.",
-    )
-
-    parser.add_argument(
-        "--experiment_id",
-        type=str,
-        help="Experiment id to use for using HF metrics in\
-              distributed storage systems with multiple processes\
-              running in parallel.",
-    )
-
-    parser.add_argument(
-        "--suffix_pairs",
-        type=str,
-        nargs="+",
-        help="pairs of suffixes(comma separated) to add to \
-              base_models_prefix to get models to interpolate between.",
-        required=True,
     )
 
     parser.add_argument(
@@ -217,22 +198,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     vals_dict = {}
-    for suffix_pair in args.suffix_pairs:
-        model1, model2 = suffix_pair.split(",")
-        args.indices = (model1, model2)
-
-        try:
-            linear_interpol_vals, euclidean_dist = main(args)
-        except ValueError as e:
-            if "Unable to find any commit" in str(e):
-                print(e, "for model pair:", (model1, model2), flush=True)
-                break
-            else:
-                raise e
-
-        vals_dict[(model1,model2)] = (linear_interpol_vals, euclidean_dist)
-        vals_dict[(model2,model1)] = (linear_interpol_vals[::-1], euclidean_dist)
-        print(f"Completed interpolation from {model1} to {model2}", flush=True)
+    args.models = tuple(args.models.split(','))
+    args.experiment_id = args.save_file.replace('/', '_')
+    if args.steps is None:
+        args.steps = (None, None)
+    linear_interpol_vals, euclidean_dist = main(args)
+    vals_dict[args.models] = (linear_interpol_vals, euclidean_dist)
+    vals_dict[args.models] = (linear_interpol_vals[::-1], euclidean_dist)
+    print(f"Completed interpolation from {args.models[0]} to {args.models[1]}", flush=True)
 
 
     with open(args.save_file, "wb") as f:
