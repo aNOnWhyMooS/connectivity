@@ -41,7 +41,7 @@ conda update -n base conda -y
 conda clean --all --yes
 
 conda create -n finetune python=3.10 -y
-conda actiavte finetune
+conda activate finetune
 
 bash ${packages};
 " 

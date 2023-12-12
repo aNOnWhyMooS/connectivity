@@ -41,7 +41,7 @@ conda update -n base conda -y
 conda clean --all --yes
 
 conda create -n interpolate python=3.10 -y
-conda actiavte interpolate
+conda activate interpolate
 
 bash ${packages};
 " 
