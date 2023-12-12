@@ -56,6 +56,10 @@ def get_loader(args,
 
     dataset = dataset.select(list(range(0, num_exs)))
 
+    if tokenizer.model_max_length >= 1e10:
+        warnings.warn(f"Tokenizer max. length not set. Setting to 512.")
+        tokenizer.model_max_length = 512
+
     if args.dataset=="cola":
         dataset = dataset.map(lambda e: tokenizer(e["sentence"], truncation=True,
                                                   padding="max_length",
