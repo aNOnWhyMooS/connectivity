@@ -1,7 +1,5 @@
 import pickle
-import collections
 import argparse
-from typing import OrderedDict
 
 import tabulate
 import numpy as np
@@ -9,6 +7,7 @@ import torch
 import torch.nn as nn
 from datasets import load_metric
 from transformers import AutoTokenizer
+from huggingface_hub import HfApi
 from match_finder import match_params
 
 from constellations.model_loaders.modelling_utils import get_criterion_fn, get_logits_converter, get_pred_fn, linear_comb
@@ -17,6 +16,16 @@ from constellations.dataloaders.loader import get_loader
 from constellations.utils.eval_utils import eval
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def get_model_type(model):
+    hf_api = HfApi()
+    model_tags = hf_api.model_info(model).tags
+    for e in ['pytorch', 'jax', 'tf']:
+        if e in model_tags:
+            if e=='jax':
+                return 'flax'
+            return e
+    raise AssertionError(f"Can't determine type of model: {model}")
 
 def main(args):
     is_feather_bert = (("feather" in args.models[0])
@@ -181,14 +190,6 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-       "--from_model_type",
-       type=str,
-       choices=["pt", "flax", "tf"],
-       help="Type of model on HF hub",
-       default="flax",
-    )
-
-    parser.add_argument(
         "--do_perm",
         action="store_true",
         help="If specified, permutation will be done, before\
@@ -200,6 +201,10 @@ if __name__ == '__main__':
     vals_dict = {}
     args.models = tuple(args.models.split(','))
     args.experiment_id = args.save_file.replace('/', '_')
+
+    args.from_model_type = get_model_type(args.models[0])
+    assert args.from_model_type==get_model_type(args.models[1])
+
     if args.steps is None:
         args.steps = (None, None)
     linear_interpol_vals, euclidean_dist = main(args)
