@@ -207,6 +207,8 @@ if __name__ == '__main__':
 
     if args.steps is None:
         args.steps = (None, None)
+    else:
+        args.steps = args.steps.split(',')
     linear_interpol_vals, euclidean_dist = main(args)
     vals_dict[args.models] = (linear_interpol_vals, euclidean_dist)
     vals_dict[args.models] = (linear_interpol_vals[::-1], euclidean_dist)
