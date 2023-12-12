@@ -10,25 +10,22 @@ from transformers import AutoModelForSequenceClassification, AutoModel, FlaxAuto
 import warnings
 
 @functools.lru_cache(125)
-def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
+def select_revision(path_or_name: str, num_steps: int,):
     """Return the latest commit with num_steps in its commit message."""
     import string, random
 
     if num_steps is None:
         return None
 
-    if tmp_dir is None:
-        tmp_dir = "_"+''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
-    if local_dir is not None:
-        repo = Repo(local_dir)
-    else:
-        try:
-            shutil.rmtree(tmp_dir)
-        except FileNotFoundError:
-            print(f"Creating {tmp_dir}, for loading in git data")
-        repo = Repository(local_dir=tmp_dir, clone_from=path_or_name,
-                          skip_lfs_files=True)
-        repo = Repo(tmp_dir)
+    tmp_dir = "_"+''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
+    try:
+        shutil.rmtree(tmp_dir)
+    except FileNotFoundError:
+        pass
+    print(f"Creating {tmp_dir}, for loading in git data")
+    repo = Repository(local_dir=tmp_dir, clone_from=path_or_name,
+                        skip_lfs_files=True)
+    repo = Repo(tmp_dir)
 
     for commit in repo.iter_commits("main"):
         if f"Saving weights and logs of step {num_steps}" == commit.message.strip():
@@ -36,7 +33,7 @@ def select_revision(path_or_name, num_steps: int, local_dir=None, tmp_dir=None):
             break
     else:
         raise ValueError(f"Unable to find any commit with {num_steps} steps")
-
+    shutil.rmtree(tmp_dir)
     return selected_commit
 
 def get_model(path_or_name,
@@ -58,7 +55,7 @@ def get_model(path_or_name,
                 but {path_or_name} is local directory!")
         revision = select_revision(path_or_name, **select_revision_kwargs)
     else:
-        revision=None #===latest
+        revision = None #===latest
 
     try:
         if ret_type=='pt':

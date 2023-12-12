@@ -53,15 +53,12 @@ def main(args):
 
     model1_kwargs = {'path_or_name': args.base_models_prefix + args.indices[0], 
                      'from_flax' : (args.from_model_type=="flax"),
-                     'num_steps' : args.num_steps, 
-                     'local_dir' : (None if args.local_dir_prefix is None
-                                    else args.local_dir_prefix + args.indices[0]),}
+                     'num_steps' : args.num_steps, }
     
     model2_kwargs = {'path_or_name': args.base_models_prefix + args.indices[1], 
                      'from_flax' : (args.from_model_type=="flax"),
-                     'num_steps' : args.num_steps, 
-                     'local_dir' : (None if args.local_dir_prefix is None
-                                    else args.local_dir_prefix + args.indices[1]),}
+                     'num_steps' : args.num_steps, }
+
     if args.do_perm:
         m1 = get_flax_seq_classification_model(**model1_kwargs)
         m2 = get_flax_seq_classification_model(**model2_kwargs)
@@ -183,15 +180,6 @@ if __name__ == '__main__':
             for evaluation. A commit with this number of '\d+ steps' in its\
             commit message, must be present on the remote. By default, latest\
             model will be loaded.",
-    )
-
-    parser.add_argument(
-        "--local_dir_prefix",
-        type=str,
-        help="Local directory prefix to fetch commits from(if repository is\
-            already cloned on local machine). For use with num_steps.\
-            If not specified commit info will be fetched\
-            into dummy directory from huggingface.co/",
     )
 
     parser.add_argument(
