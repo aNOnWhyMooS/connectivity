@@ -10,7 +10,7 @@ from transformers import AutoModelForSequenceClassification, AutoModel, FlaxAuto
 import warnings
 
 @functools.lru_cache(125)
-def select_revision(path_or_name: str, num_steps: int,):
+def select_revision(path_or_name: str, num_steps: int|str,):
     """Return the latest commit with num_steps in its commit message."""
     import string, random
 

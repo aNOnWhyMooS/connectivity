@@ -1,5 +1,6 @@
 import pickle
 import argparse
+from typing import Literal, List, Tuple
 
 import tabulate
 import numpy as np
@@ -11,13 +12,13 @@ from huggingface_hub import HfApi
 from match_finder import match_params
 
 from constellations.model_loaders.modelling_utils import get_criterion_fn, get_logits_converter, get_pred_fn, linear_comb
-from constellations.model_loaders.load_model import get_sequence_classification_model, get_flax_seq_classification_model
+from constellations.model_loaders.load_model import get_sequence_classification_model, get_flax_seq_classification_model, select_revision
 from constellations.dataloaders.loader import get_loader
 from constellations.utils.eval_utils import eval
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def get_model_type(model):
+def get_model_type(model: str) -> Literal['flax', 'tf', 'pytorch']:
     hf_api = HfApi()
     model_tags = hf_api.model_info(model).tags
     for e in ['pytorch', 'jax', 'tf']:
@@ -26,6 +27,26 @@ def get_model_type(model):
                 return 'flax'
             return e
     raise AssertionError(f"Can't determine type of model: {model}")
+
+def steps_available(model: str, step: str):
+    try:
+        select_revision(model, step)
+        return True
+    except ValueError as e:
+        if 'Unable to find any commit' in str(e):
+            return False
+        raise e
+
+def get_model_pairs(substr: str, step: str) -> List[Tuple[str, str]]:
+    hf_api = HfApi()
+    models = [model.id for model in hf_api.list_models(search=substr)
+              if steps_available(model, step)]
+    
+    print(f'In total interpolating between {len(models)} models: {models}')
+
+    return [(model1, model2)
+            for i, model1 in enumerate(models) 
+            for j, model2 in enumerate(models) if i<j]
 
 def main(args):
     is_feather_bert = (("feather" in args.models[0])
@@ -117,7 +138,9 @@ if __name__ == '__main__':
         "--models",
         type=str,
         required=True,
-        help="Comma separated list of models to interpolate between.",
+        help="Comma separated list of models to interpolate between. "
+        "Or a substring. All models on hf-hub having this substring will "
+        "be interpolated between.",
     )
 
     parser.add_argument(
@@ -148,52 +171,61 @@ if __name__ == '__main__':
         type=str,
         default="test",
         choices=["train", "test", "in_domain_dev", "out_domain_dev", "validation", "dev_and_test"],
-        help="data split to use: [train, test](for mnli/hans) or \
-            [train, in_domain_dev, out_domain_dev, validation](for cola) or\
-            [dev_and_test, train](for paws) or [train, validation, test](qqp).\
-            For MNLI, 'test' resolves to 'validation_matched', and for HANS,\
-            'test' resolves to 'validation'. (default: test)",
+        help="data split to use: [train, test](for mnli/hans) or "
+            "[train, in_domain_dev, out_domain_dev, validation](for cola) or "
+            "[dev_and_test, train](for paws) or [train, validation, test](qqp). "
+            "For MNLI, 'test' resolves to 'validation_matched', and for HANS, "
+            "'test' resolves to 'validation'. (default: test)",
     )
 
     parser.add_argument(
         "--num_exs",
         type=int,
         default=512,
-        help="number of examples used to evaluate each model on \
-              the linear interpolation curve.(default: 512)",
+        help="number of examples used to evaluate each model on "
+              "the linear interpolation curve.(default: 512)",
     )
 
     parser.add_argument(
         "--n_sample",
         type=int,
         default=8,
-        help="number of samples between the points we are\
-              interpolating between. (default: 8)",
+        help="number of samples between the points we are"
+              "interpolating between. (default: 8)",
     )
 
     parser.add_argument(
         "--save_file",
         type=str,
         required=True,
-        help="Name of file where to save the interpolation values,\
-        using pickle."
+        help="Name of file where to save the interpolation values,"
+        "using pickle."
     )
 
     parser.add_argument(
         "--steps",
         type=str,
-        help="Comma separated pair of steps at which to fetch\
-            the two models specified in args.models.\
-            A commit with this number of ' \d+ steps' in its\
-            commit message, must be present on the remote. By default, latest\
-            model will be loaded.",
+        help="Comma separated pair of steps at which to fetch "
+            "the two models specified in args.models. "
+            "A commit with this number of ' \d+ steps' in its "
+            "commit message, must be present on the remote. By default, latest "
+            "model will be loaded. Can also be a single number in case both "
+            "numbers are supposed to be same.",
     )
 
     parser.add_argument(
         "--do_perm",
         action="store_true",
-        help="If specified, permutation will be done, before\
-            interpolating between models."
+        help="If specified, permutation will be done, before"
+            "interpolating between models."
+    )
+
+    parser.add_argument(
+        '--job_id',
+        required=False,
+        type=int,
+        help="In case args.models is a substring, this tells "
+        "which exact pair of models to interpolate between."
     )
 
     args = parser.parse_args()
@@ -209,6 +241,12 @@ if __name__ == '__main__':
         args.steps = (None, None)
     else:
         args.steps = args.steps.split(',')
+        if len(args.steps)==1:
+            args.steps = (args.steps[0], args.steps[0])
+    
+    if len(args.models)==1:
+        args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
+    
     linear_interpol_vals, euclidean_dist = main(args)
     vals_dict[args.models] = (linear_interpol_vals, euclidean_dist)
     vals_dict[args.models] = (linear_interpol_vals[::-1], euclidean_dist)

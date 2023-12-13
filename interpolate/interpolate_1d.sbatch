@@ -2,8 +2,13 @@
 Submit a job for interpolating between a pair of models. 
 
 Usage:
-  sbatch interpolate_1d.sbatch <out_dir> "<interpolate_1d.py args>"
-
+  To interpolate between a particular pair. The pair is specified in interpolate_1d.py's args:
+    sbatch interpolate_1d.sbatch <out_dir> "<interpolate_1d.py args>"
+  
+  To interpolate between all models with a substr. The substr is specified in interpolate_1d.py's args:
+    sbatch --array=0-<num_interps> interpolate_1d.sbatch <out_dir> "<interpolate_1d.py args>"
+    
+    <num_interps> is the total number of interpolations to perform -1. 
 com
 
 #!/bin/bash
@@ -27,6 +32,9 @@ conda activate interpolate;
 export HF_DATASETS_CACHE=\"/scratch/$USER/.cache/huggingface/datasets\"
 export TRANSFORMERS_CACHE=\"/scratch/$USER/.cache/huggingface/transformers\"
 export HF_METRICS_CACHE=\"/scratch/$USER/.cache/huggingface/metrics\"
-python3 interpolate_1d.py $2;
+if [[ -z ${SLURM_ARRAY_TASK_ID}]]; then
+    python3 interpolate_1d.py $2;
+else
+    python3 interpolate_1d.py --job_id $SLURM_ARRAY_TASK_ID $2;
 exit
 "
