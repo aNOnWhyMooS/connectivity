@@ -247,6 +247,10 @@ if __name__ == '__main__':
     if len(args.models)==1:
         args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
     
+    if args.job_id is not None:
+        args.save_file = ('.'.join(args.save_file.split('.')[:-1])
+                          +f'_{args.job_id}.'+args.save_file.split('.')[-1])
+
     linear_interpol_vals, euclidean_dist = main(args)
     vals_dict[args.models] = (linear_interpol_vals, euclidean_dist)
     vals_dict[args.models] = (linear_interpol_vals[::-1], euclidean_dist)
