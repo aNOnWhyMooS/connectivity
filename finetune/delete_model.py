@@ -17,4 +17,5 @@ except utils.RepositoryNotFoundError:
     should_delete = (input(f'Delete {len(models)} models having {sys.argv[2]} ? (y/n):')=='y')
     if should_delete:
         for model in models:
-            hf_api.delete_repo(sys.argv[2])
+            hf_api.delete_repo(model)
+            print('Successfully deleted:', model)
