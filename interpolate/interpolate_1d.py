@@ -231,11 +231,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     vals_dict = {}
-    args.models = tuple(args.models.split(','))
-    if len(args.models)==1:
-        args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
-    
-    args.experiment_id = args.save_file.replace('/', '_')
 
     if args.steps is None:
         args.steps = (None, None)
@@ -243,6 +238,13 @@ if __name__ == '__main__':
         args.steps = args.steps.split(',')
         if len(args.steps)==1:
             args.steps = (args.steps[0], args.steps[0])
+    
+    args.models = tuple(args.models.split(','))
+    if len(args.models)==1:
+        args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
+    
+    args.experiment_id = args.save_file.replace('/', '_')
+
     
     if args.job_id is not None:
         args.save_file = ('.'.join(args.save_file.split('.')[:-1])
