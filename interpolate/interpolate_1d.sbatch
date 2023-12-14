@@ -1,3 +1,14 @@
+#!/bin/bash
+#SBATCH --job-name=interpolate_models
+#SBATCH --open-mode=append
+#SBATCH --output=$1/%j_%x.out
+#SBATCH --error=$1/%j_%x.err
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:1
+#SBATCH --mem=128G
+#SBATCH --time=0-00:30:00
+nvidia-smi
+
 <<com
 Submit a job for interpolating between a pair of models. 
 
@@ -10,17 +21,6 @@ Usage:
     
     <num_interps> is the total number of interpolations to perform -1. 
 com
-
-#!/bin/bash
-#SBATCH --job-name=interpolate_models
-#SBATCH --open-mode=append
-#SBATCH --output=$1/%j_%x.out
-#SBATCH --error=$1/%j_%x.err
-#SBATCH --nodes=1
-#SBATCH --gres=gpu:1
-#SBATCH --mem=128G
-#SBATCH --time=0-00:30:00
-nvidia-smi
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.8.86-cudnn8.7-devel-ubuntu22.04.2.sif
 OVERLAY_FILE=/scratch/$USER/interpolate-torch/interpolate-torch.ext3:ro
