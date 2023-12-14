@@ -19,7 +19,7 @@ com
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --mem=128G
-#SBATCH --time=0-08:59:59
+#SBATCH --time=0-00:30:00
 nvidia-smi
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.8.86-cudnn8.7-devel-ubuntu22.04.2.sif
