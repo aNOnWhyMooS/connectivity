@@ -125,8 +125,16 @@ class ModelArguments:
     another_seed_coeff: Optional[float] = field(
         default=None,
         metadata={
-            "help": "This coefficient will be used to scale the proportion of initialization of "
+            "help": "This coefficient will be used to scale the proportion of initialization of another_init_seed used."
         },
+    )
+
+    data_shuff_seed: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": ("If specified, this seed will be used to shuffle data. Otherwise, --seed will be used."
+                     "This is useful if you want to keep the initialisation same, but change the data order.")
+        }
     )
 
     def __post_init__(self):
@@ -136,7 +144,6 @@ class ModelArguments:
                                  'must be specified. One of them is missing. Check:'
                                  f' another_init_seed: {self.another_init_seed},'
                                  f' another_seed_coeff: {self.another_seed_coeff}')
-
 
 @dataclass
 class DataTrainingArguments:
@@ -542,7 +549,10 @@ def main():
 
     num_epochs = int(training_args.num_train_epochs)
     rng = jax.random.PRNGKey(training_args.seed)
-    train_dataset = train_dataset.shuffle(training_args.seed)
+    train_dataset = train_dataset.shuffle((model_args.data_shuff_seed 
+                                           if model_args.data_shuff_seed is not None
+                                           else training_args.seed))
+
     dropout_rngs = jax.random.split(rng, jax.local_device_count())
 
     train_batch_size = training_args.per_device_train_batch_size * jax.local_device_count()
