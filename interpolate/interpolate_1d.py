@@ -245,7 +245,6 @@ if __name__ == '__main__':
     
     args.experiment_id = args.save_file.replace('/', '_')
 
-    
     if args.job_id is not None:
         args.save_file = ('.'.join(args.save_file.split('.')[:-1])
                           +f'_{args.job_id}.'+args.save_file.split('.')[-1])
