@@ -232,10 +232,10 @@ if __name__ == '__main__':
 
     vals_dict = {}
     args.models = tuple(args.models.split(','))
+    if len(args.models)==1:
+        args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
+    
     args.experiment_id = args.save_file.replace('/', '_')
-
-    args.from_model_type = get_model_type(args.models[0])
-    assert args.from_model_type==get_model_type(args.models[1])
 
     if args.steps is None:
         args.steps = (None, None)
@@ -244,12 +244,12 @@ if __name__ == '__main__':
         if len(args.steps)==1:
             args.steps = (args.steps[0], args.steps[0])
     
-    if len(args.models)==1:
-        args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
-    
     if args.job_id is not None:
         args.save_file = ('.'.join(args.save_file.split('.')[:-1])
                           +f'_{args.job_id}.'+args.save_file.split('.')[-1])
+
+    args.from_model_type = get_model_type(args.models[0])
+    assert args.from_model_type==get_model_type(args.models[1])
 
     linear_interpol_vals, euclidean_dist = main(args)
     vals_dict[args.models] = (linear_interpol_vals, euclidean_dist)
