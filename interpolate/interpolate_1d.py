@@ -40,7 +40,7 @@ def steps_available(model: str, step: str):
 def get_model_pairs(substr: str, step: str) -> List[Tuple[str, str]]:
     hf_api = HfApi()
     models = [model.id for model in hf_api.list_models(search=substr)
-              if steps_available(model, step)]
+              if steps_available(model.id, step)]
     
     print(f'In total interpolating between {len(models)} models: {models}')
 
