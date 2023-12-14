@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=interpolate_models
 #SBATCH --open-mode=append
-#SBATCH --output=%j_%x.out
-#SBATCH --error=%j_%x.err
+#SBATCH --output=%A_%x_%a.out
+#SBATCH --error=%A_%x_%a.err
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --mem=128G
@@ -32,12 +32,13 @@ singularity exec --nv\
                  /bin/bash -c "
 source /ext3/env.sh;
 conda activate interpolate;
-export HF_DATASETS_CACHE=\"/scratch/$USER/.cache/huggingface/datasets\"
-export TRANSFORMERS_CACHE=\"/scratch/$USER/.cache/huggingface/transformers\"
-export HF_METRICS_CACHE=\"/scratch/$USER/.cache/huggingface/metrics\"
-if [[ -z ${SLURM_ARRAY_TASK_ID}]]; then
+export HF_DATASETS_CACHE=\"/scratch/$USER/.cache/huggingface/datasets\";
+export TRANSFORMERS_CACHE=\"/scratch/$USER/.cache/huggingface/transformers\";
+export HF_METRICS_CACHE=\"/scratch/$USER/.cache/huggingface/metrics\";
+if [[ -z \"${SLURM_ARRAY_TASK_ID}\" ]]; then
     python3 interpolate_1d.py $1;
 else
     python3 interpolate_1d.py --job_id $SLURM_ARRAY_TASK_ID $1;
+fi;
 exit
 "
