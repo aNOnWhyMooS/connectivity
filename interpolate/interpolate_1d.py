@@ -243,12 +243,12 @@ if __name__ == '__main__':
     args.models = tuple(args.models.split(','))
     if len(args.models)==1:
         args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
-    
-    args.experiment_id = args.save_file.replace('/', '_')
 
     if args.job_id is not None:
         args.save_file = ('.'.join(args.save_file.split('.')[:-1])
                           +f'_{args.job_id}.'+args.save_file.split('.')[-1])
+
+    args.experiment_id = args.save_file.replace('/', '_')
 
     args.from_model_type = get_model_type(args.models[0])
     assert args.from_model_type==get_model_type(args.models[1])
