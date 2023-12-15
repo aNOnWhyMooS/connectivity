@@ -1,5 +1,5 @@
 <<usage
-Creates an overlay for finetuning using huggingface script.
+Creates an overlay for finetuning using original script.
 Usage:
   bash setup_overlay.sh [path to packages.sh]
 
@@ -14,20 +14,20 @@ usage
 set -e
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.8.86-cudnn8.7-devel-ubuntu22.04.2.sif
-OVERLAY=finetune-jax/finetune-jax.ext3
+OVERLAY=finetune-tf1/finetune-tf1.ext3
 
 packs="$(pwd)/packages.sh"
 packages=${1:-${packs}}
 
 cd $SCRATCH
 
-mkdir finetune-jax
+mkdir finetune-tf1
 
-cp -rp /scratch/work/public/overlay-fs-ext3/overlay-25GB-500K.ext3.gz ./finetune-jax/
+cp -rp /scratch/work/public/overlay-fs-ext3/overlay-25GB-500K.ext3.gz ./finetune-tf1/
 
-gunzip finetune-jax/overlay-25GB-500K.ext3.gz
+gunzip finetune-tf1/overlay-25GB-500K.ext3.gz
 
-mv finetune-jax/overlay-25GB-500K.ext3 finetune-jax/finetune-jax.ext3
+mv finetune-tf1/overlay-25GB-500K.ext3 finetune-tf1/finetune-tf1.ext3
 
 singularity exec --overlay $OVERLAY $SINGULARITY_IMAGE /bin/bash -c "
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
