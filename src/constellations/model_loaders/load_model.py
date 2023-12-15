@@ -1,40 +1,19 @@
 import functools, os, re
-import shutil
 from typing import List, Optional, Type, Literal
 from urllib.error import HTTPError
 
 import torch
-from git import Repo
-from huggingface_hub import Repository, HfApi
+from huggingface_hub import HfApi
 from transformers import AutoModelForSequenceClassification, AutoModel, FlaxAutoModelForSequenceClassification
 import warnings
 
 @functools.lru_cache(125)
 def select_revision(path_or_name: str, num_steps: int|str,):
     """Return the latest commit with num_steps in its commit message."""
-    import string, random
-
-    if num_steps is None:
-        return None
-
-    tmp_dir = "_"+''.join(random.choices(string.ascii_uppercase+string.digits, k=20))
-    try:
-        shutil.rmtree(tmp_dir)
-    except FileNotFoundError:
-        pass
-    print(f"Creating {tmp_dir}, for loading in git data")
-    repo = Repository(local_dir=tmp_dir, clone_from=path_or_name,
-                        skip_lfs_files=True)
-    repo = Repo(tmp_dir)
-
-    for commit in repo.iter_commits("main"):
-        if f"Saving weights and logs of step {num_steps}" == commit.message.strip():
-            selected_commit=str(commit)
-            break
-    else:
-        raise ValueError(f"Unable to find any commit with {num_steps} steps")
-    shutil.rmtree(tmp_dir)
-    return selected_commit
+    for commit in HfApi().list_repo_commits(path_or_name):
+        if f"Saving weights and logs of step {num_steps}" == commit.title.strip():
+            return commit.commit_id
+    raise ValueError(f"Unable to find any commit with {num_steps} steps")
 
 def get_model(path_or_name,
               base_model: Optional[str]="bert-base-uncased",

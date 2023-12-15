@@ -10,31 +10,21 @@
 
 from transformers import BertModel, BertTokenizer
 
-from git import Repo
-from huggingface_hub import Repository
+from huggingface_hub import HfApi
 
 import torch
-import sys
-import string, random
+import sys, re
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """### Get Commits on Repo"""
 
 model_repo = f"Jeevesh8/bert_ft_qqp_6ep-{sys.argv[1]}"
-ran_string = ''.join(random.choices(string.ascii_lowercase, k=20))
-local_dir = f"model_commits_{ran_string}/"
-repo = Repository(local_dir=local_dir, clone_from=model_repo, skip_lfs_files=True)
-
-repo = Repo(local_dir)
-
-import re
-
 ckpts = {}
-for commit in repo.iter_commits("main"):
-    match_obj = re.match(r"Saving weights and logs of step (\d+)", commit.message)
+for commit in HfApi().list_repo_commits(model_repo):
+    match_obj = re.match(r"Saving weights and logs of step (\d+)", commit.title.strip())
     if match_obj is not None:
-        ckpts[int(match_obj.group(1))] = str(commit)
+        ckpts[int(match_obj.group(1))] = commit.commit_id
 
 tokenizer = BertTokenizer.from_pretrained(model_repo)
 
