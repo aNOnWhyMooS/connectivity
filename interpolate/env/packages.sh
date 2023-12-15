@@ -1,5 +1,5 @@
 <<com
-Installs packages necessary for hf script's finetuning.
+Installs packages necessary for interpolation.
 com
 
 #!/bin/bash
