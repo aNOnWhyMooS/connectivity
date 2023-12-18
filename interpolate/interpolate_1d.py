@@ -2,6 +2,7 @@ import pickle
 import argparse
 from typing import Literal, List, Tuple
 
+import time
 import tabulate
 import numpy as np
 import torch
@@ -9,6 +10,7 @@ import torch.nn as nn
 from datasets import load_metric
 from transformers import AutoTokenizer
 from huggingface_hub import HfApi
+from requests.connections import ConnectionError
 from match_finder import match_params
 
 from constellations.model_loaders.modelling_utils import get_criterion_fn, get_logits_converter, get_pred_fn, linear_comb
@@ -39,7 +41,15 @@ def steps_available(model: str, step: str):
 
 def get_model_pairs(substr: str, step: str) -> List[Tuple[str, str]]:
     hf_api = HfApi()
-    models = [model.id for model in hf_api.list_models(search=substr)
+
+    for _ in range(10):
+        try:
+            all_models = hf_api.list_models(search=substr)
+            break
+        except ConnectionError:
+            time.sleep(3)
+        
+    models = [model.id for model in all_models
               if steps_available(model.id, step)]
     models = sorted(models)
 

@@ -4,9 +4,9 @@ com
 
 #!/bin/bash
 set -e
-conda install tensorflow-gpu==1.15.0
-pip install numpy==1.19.5
-pip install getgist
+conda install tensorflow-gpu==1.15.0 -y
+conda install numpy==1.19.5 -y
+pip install getgist -y
 getgist raffaem download_glue_data.py
 python3 download_glue_data.py --data_dir glue_data --tasks QQP
 python3 download_glue_data.py --data_dir glue_data --tasks MNLI
