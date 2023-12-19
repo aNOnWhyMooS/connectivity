@@ -1,3 +1,4 @@
+import re
 import glob
 import pickle
 import argparse
@@ -39,6 +40,24 @@ def steps_available(model: str, step: str):
         if 'Unable to find any commit' in str(e):
             return False
         raise e
+
+def get_all_steps(model: str):
+    hf_api = HfApi()
+    all_steps = []
+    for commit in hf_api.list_repo_commits(model):
+        match_obj = re.match(r'Saving weights and logs of step (\d+)', commit.title.strip())
+        if match_obj is None:
+            continue
+        steps = match_obj.group(1)
+        all_steps.append(steps)
+    return all_steps
+
+def get_step_pairs(model: str,) -> List[Tuple[str, str]]:
+    all_steps = get_all_steps(model)
+    return [(s1, s2)
+            for i, s1 in enumerate(all_steps)
+            for j, s2 in enumerate(all_steps)
+            if i<j]
 
 def get_model_pairs(substr: str, step: str) -> List[Tuple[str, str]]:
     hf_api = HfApi()
@@ -222,7 +241,7 @@ if __name__ == '__main__':
             "A commit with this number of ' \d+ steps' in its "
             "commit message, must be present on the remote. By default, latest "
             "model will be loaded. Can also be a single number in case both "
-            "numbers are supposed to be same.",
+            "numbers are supposed to be same. Specify steps==all to interpolate across steps.",
     )
 
     parser.add_argument(
@@ -244,7 +263,12 @@ if __name__ == '__main__':
 
     vals_dict = {}
 
-    if args.steps is None:
+    if args.steps == 'all':
+        assert len(args.models.split(',')) == 1
+        args.steps = get_step_pairs(args.models)[args.job_id]
+        args.models = f'{args.models},{args.models}'
+    
+    elif args.steps is None:
         args.steps = (None, None)
     else:
         args.steps = args.steps.split(',')
@@ -258,7 +282,8 @@ if __name__ == '__main__':
     if args.job_id is not None:
         suffix = args.save_file.split('.')[-1]
         prefix = ('.'.join(args.save_file.split('.')[:-1])
-                  +f'_{args.models[0].split("/")[-1]}_{args.models[1].split("/")[-1]}')
+                  +f'_{args.models[0].split("/")[-1]}@{args.steps[0]}'
+                  +f'_{args.models[1].split("/")[-1]}@{args.steps[1]}')
 
         already_completed = glob.glob(f'{prefix}_*.{suffix}')
         if already_completed:
