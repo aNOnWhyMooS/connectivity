@@ -1,4 +1,4 @@
-import re
+import re, os
 import glob
 import pickle
 import argparse
@@ -261,6 +261,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    args.paws_data_dir = os.path.join(os.path.dirname(
+                                        os.path.dirname(os.path.abspath(__file__))),
+                                      'paws_final')
+    
     vals_dict = {}
 
     if args.steps == 'all':
