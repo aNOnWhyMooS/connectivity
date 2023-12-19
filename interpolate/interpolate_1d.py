@@ -1,3 +1,4 @@
+import glob
 import pickle
 import argparse
 from typing import Literal, List, Tuple
@@ -255,9 +256,16 @@ if __name__ == '__main__':
         args.models = get_model_pairs(args.models[0], args.steps[0])[args.job_id]
 
     if args.job_id is not None:
-        args.save_file = ('.'.join(args.save_file.split('.')[:-1])
-                          +f'_{args.job_id}.'+args.save_file.split('.')[-1])
+        suffix = args.save_file.split('.')[-1]
+        prefix = ('.'.join(args.save_file.split('.')[:-1])
+                  +f'_{args.models[0].split("/")[-1]}_{args.models[1].split("/")[-1]}')
 
+        already_completed = glob.glob(f'{prefix}_*.{suffix}')
+        if already_completed:
+            print(f'Job already completed with logs at:', already_completed, '. Exitting.')
+            exit(0)
+
+        args.save_file = f'{prefix}_{args.job_id}.{suffix}'
     args.experiment_id = args.save_file.replace('/', '_')
 
     args.from_model_type = get_model_type(args.models[0])
