@@ -10,7 +10,7 @@ import torch.nn as nn
 from datasets import load_metric
 from transformers import AutoTokenizer
 from huggingface_hub import HfApi
-from requests.connections import ConnectionError
+from requests.exceptions import ConnectionError
 from match_finder import match_params
 
 from constellations.model_loaders.modelling_utils import get_criterion_fn, get_logits_converter, get_pred_fn, linear_comb
