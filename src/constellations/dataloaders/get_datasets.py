@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from typing import Dict, Iterable, List, Optional
 import datasets
 from datasets import load_dataset
@@ -37,8 +38,9 @@ def get_qqp_data(split:str, n_parts: int=1, index:int=0) -> datasets.Dataset:
 def get_paws_data(data_dir: str, split:str, n_parts: int=1, index:int=0) -> datasets.Dataset:
     split_to_locs = {"train": os.path.join(data_dir, "train.tsv"), 
                      "dev_and_test": os.path.join(data_dir, "dev_and_test.tsv")}
-    dataset = load_dataset("csv", data_files=split_to_locs, delimiter="\t")
-    dataset = dataset[split]
+    
+    df = pd.read_csv(split_to_locs[split], delimiter='\t')
+    dataset = datasets.Dataset.from_pandas(df)
     
     if n_parts>1:
         dataset = dataset.shard(n_parts, index)
