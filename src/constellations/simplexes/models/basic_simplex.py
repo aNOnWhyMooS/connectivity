@@ -6,6 +6,7 @@ import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def flatten(lst):
     tmp = [i.contiguous().view(-1, 1) for i in lst]
     return torch.cat(tmp).view(-1)
@@ -22,18 +23,23 @@ def simplex_parameters(module, params, num_vertices):
 
         # name = '*'.join(name.split('.'))
         for i in range(num_vertices):
-            state_dict[name + "_vertex_" + str(i)] = data.detach_().clone().float().requires_grad_()
+            state_dict[name + "_vertex_" + str(i)] = (
+                data.detach_().clone().float().requires_grad_()
+            )
             # module.register_parameter(name + "_vertex_" + str(i),
             #                            torch.nn.Parameter(data.clone().detach_().requires_grad_()))
-        
+
         params.append((state_dict, name))
         # params.append((module, name))
 
 
 cdist = Kernel().covar_dist
 
+
 class BasicSimplex(torch.nn.Module):
-    def __init__(self, base, num_vertices = 2, fixed_points = [True, False], *args, **kwargs):
+    def __init__(
+        self, base, num_vertices=2, fixed_points=[True, False], *args, **kwargs
+    ):
         super().__init__()
         self.params = list()
         # self.base = base(*args, **kwargs)
@@ -49,18 +55,20 @@ class BasicSimplex(torch.nn.Module):
         self.n_vert = num_vertices
 
     def _fix_points(self, fixed_points):
-        for (module, name) in self.params:
+        for module, name in self.params:
             for vertex in range(self.num_vertices):
                 if fixed_points[vertex]:
-                    module[name + "_vertex_" + str(vertex)] = module[name + "_vertex_" + str(vertex)].detach_()
+                    module[name + "_vertex_" + str(vertex)] = module[
+                        name + "_vertex_" + str(vertex)
+                    ].detach_()
                     # module.__getattr__(name + "_vertex_" + str(vertex)).detach_()
 
     def sample(self, coeffs_t):
         base_s_dir = self.base.state_dict()
         # print(self.base.state_dict().keys())
         # print(base_s_dir.keys())
-        for (module, name) in self.params:
-            new_par = 0.
+        for module, name in self.params:
+            new_par = 0.0
             for vertex in range(self.num_vertices):
                 vert = module[name + "_vertex_" + str(vertex)]
                 # vert = module.__getattr__(name + "_vertex_" + str(vertex))
@@ -80,22 +88,25 @@ class BasicSimplex(torch.nn.Module):
         self.sample(coeffs_t)
         if target != None:
             if X_tok_ids != None:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask, 
-                                token_type_ids=X_tok_ids,
-                                labels=target)
+                return self.base(
+                    input_ids=X_ids,
+                    attention_mask=X_attn_mask,
+                    token_type_ids=X_tok_ids,
+                    labels=target,
+                )
             else:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask, 
-                                labels=target)
+                return self.base(
+                    input_ids=X_ids, attention_mask=X_attn_mask, labels=target
+                )
         else:
             if X_tok_ids != None:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask, 
-                                token_type_ids=X_tok_ids)
+                return self.base(
+                    input_ids=X_ids,
+                    attention_mask=X_attn_mask,
+                    token_type_ids=X_tok_ids,
+                )
             else:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask)
+                return self.base(input_ids=X_ids, attention_mask=X_attn_mask)
 
     def add_vert(self):
         return self.add_vertex()
@@ -103,29 +114,31 @@ class BasicSimplex(torch.nn.Module):
     def add_vertex(self):
         new_vertex = self.num_vertices
 
-        for (module, name) in self.params:
-            data = 0.
+        for module, name in self.params:
+            data = 0.0
             for vertex in range(self.num_vertices):
                 with torch.no_grad():
                     data += module[name + "_vertex_" + str(vertex)]
                     # data += module.__getattr__(name + "_vertex_" + str(vertex))
             data = data / self.num_vertices
-            data = data / ((0.8-1.2) * torch.rand(1) + 1.2).item()      # to add some noise to the new vertex weights
+            data = (
+                data / ((0.8 - 1.2) * torch.rand(1) + 1.2).item()
+            )  # to add some noise to the new vertex weights
             data = data.detach_().clone().float().requires_grad_()
             # with torch.no_grad():
             #     data.add_((abs(torch.mean(data))**0.5)*torch.randn(*tuple(data.shape)).float().to(device))
             module[name + "_vertex_" + str(new_vertex)] = data
             # module.register_parameter(name + "_vertex_" + str(new_vertex),
             #                           torch.nn.Parameter(data.clone().detach_().requires_grad_()))
-            
+
         self.num_vertices += 1
 
     def total_volume(self):
         n_vert = self.num_vertices
 
-        dist_mat = 0.
-        for (module, name) in self.params:
-            all_vertices = [] #* self.num_vertices
+        dist_mat = 0.0
+        for module, name in self.params:
+            all_vertices = []  # * self.num_vertices
             for vertex in range(self.num_vertices):
                 par = module[name + "_vertex_" + str(vertex)]
                 # par = module.__getattr__(name + "_vertex_" + str(vertex))
@@ -133,18 +146,18 @@ class BasicSimplex(torch.nn.Module):
             par_vecs = torch.stack(all_vertices)
             dist_mat = dist_mat + cdist(par_vecs, par_vecs).pow(2)
 
-        mat = torch.ones(n_vert+1, n_vert+1) - torch.eye(n_vert + 1)
+        mat = torch.ones(n_vert + 1, n_vert + 1) - torch.eye(n_vert + 1)
         # dist_mat = cdist(par_vecs, par_vecs).pow(2)
         mat[:n_vert, :n_vert] = dist_mat
 
-        norm = (math.factorial(n_vert-1)**2) * (2. ** (n_vert-1))
+        norm = (math.factorial(n_vert - 1) ** 2) * (2.0 ** (n_vert - 1))
         return torch.abs(torch.det(mat)).div(norm)
-    
+
     def par_vectors(self):
         all_vertices_list = []
         for vertex in range(self.num_vertices):
             vertex_list = []
-            for (module, name) in self.params:
+            for module, name in self.params:
                 val = module[name + "_vertex_" + str(vertex)].detach()
                 # val = module.__getattr__(name + "_vertex_" + str(vertex)).detach()
                 vertex_list.append(val)
@@ -153,7 +166,7 @@ class BasicSimplex(torch.nn.Module):
 
 
 class PreDefSimplex(torch.nn.Module):
-    def __init__(self, base, num_vertices = 1, fixed_points = [True], *args, **kwargs):
+    def __init__(self, base, num_vertices=1, fixed_points=[True], *args, **kwargs):
         super().__init__()
         self.params = list()
         # self.base = base(*args, **kwargs)
@@ -169,18 +182,20 @@ class PreDefSimplex(torch.nn.Module):
         self.n_vert = num_vertices
 
     def _fix_points(self, fixed_points):
-        for (module, name) in self.params:
+        for module, name in self.params:
             for vertex in range(self.num_vertices):
                 if fixed_points[vertex]:
-                    module[name + "_vertex_" + str(vertex)] = module[name + "_vertex_" + str(vertex)].detach_()
+                    module[name + "_vertex_" + str(vertex)] = module[
+                        name + "_vertex_" + str(vertex)
+                    ].detach_()
                     # module.__getattr__(name + "_vertex_" + str(vertex)).detach_()
 
     def sample(self, coeffs_t):
         base_s_dir = self.base.state_dict()
         # print(self.base.state_dict().keys())
         # print(base_s_dir.keys())
-        for (module, name) in self.params:
-            new_par = torch.tensor([0.]).to(device)
+        for module, name in self.params:
+            new_par = torch.tensor([0.0]).to(device)
             for vertex in range(self.num_vertices):
                 vert = module[name + "_vertex_" + str(vertex)].to(device)
                 # vert = module.__getattr__(name + "_vertex_" + str(vertex))
@@ -200,22 +215,25 @@ class PreDefSimplex(torch.nn.Module):
         self.sample(coeffs_t)
         if target != None:
             if X_tok_ids != None:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask, 
-                                token_type_ids=X_tok_ids,
-                                labels=target)
+                return self.base(
+                    input_ids=X_ids,
+                    attention_mask=X_attn_mask,
+                    token_type_ids=X_tok_ids,
+                    labels=target,
+                )
             else:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask, 
-                                labels=target)
+                return self.base(
+                    input_ids=X_ids, attention_mask=X_attn_mask, labels=target
+                )
         else:
             if X_tok_ids != None:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask, 
-                                token_type_ids=X_tok_ids)
+                return self.base(
+                    input_ids=X_ids,
+                    attention_mask=X_attn_mask,
+                    token_type_ids=X_tok_ids,
+                )
             else:
-                return self.base(input_ids=X_ids, 
-                                attention_mask=X_attn_mask)
+                return self.base(input_ids=X_ids, attention_mask=X_attn_mask)
 
     def add_vert(self, model):
         return self.add_vertex(model)
@@ -223,10 +241,12 @@ class PreDefSimplex(torch.nn.Module):
     def add_vertex(self, model):
         new_vertex = self.num_vertices
 
-        for (module, name) in self.params:
+        for module, name in self.params:
             data = model.state_dict()[name].data
-            
-            module[name + "_vertex_" + str(new_vertex)] = data.clone().detach_().float().requires_grad_()
+
+            module[name + "_vertex_" + str(new_vertex)] = (
+                data.clone().detach_().float().requires_grad_()
+            )
             # module.register_parameter(name + "_vertex_" + str(new_vertex),
             #                           torch.nn.Parameter(data.clone().detach_().requires_grad_()))
         self.num_vertices += 1
@@ -234,9 +254,9 @@ class PreDefSimplex(torch.nn.Module):
     def total_volume(self):
         n_vert = self.num_vertices
 
-        dist_mat = 0.
-        for (module, name) in self.params:
-            all_vertices = [] #* self.num_vertices
+        dist_mat = 0.0
+        for module, name in self.params:
+            all_vertices = []  # * self.num_vertices
             for vertex in range(self.num_vertices):
                 par = module[name + "_vertex_" + str(vertex)].to(device)
                 # par = module.__getattr__(name + "_vertex_" + str(vertex))
@@ -244,18 +264,18 @@ class PreDefSimplex(torch.nn.Module):
             par_vecs = torch.stack(all_vertices)
             dist_mat = dist_mat + cdist(par_vecs, par_vecs).pow(2)
 
-        mat = torch.ones(n_vert+1, n_vert+1) - torch.eye(n_vert + 1)
+        mat = torch.ones(n_vert + 1, n_vert + 1) - torch.eye(n_vert + 1)
         # dist_mat = cdist(par_vecs, par_vecs).pow(2)
         mat[:n_vert, :n_vert] = dist_mat
 
-        norm = (math.factorial(n_vert-1)**2) * (2. ** (n_vert-1))
+        norm = (math.factorial(n_vert - 1) ** 2) * (2.0 ** (n_vert - 1))
         return torch.abs(torch.det(mat)).div(norm)
-    
+
     def par_vectors(self):
         all_vertices_list = []
         for vertex in range(self.num_vertices):
             vertex_list = []
-            for (module, name) in self.params:
+            for module, name in self.params:
                 val = module[name + "_vertex_" + str(vertex)].detach()
                 # val = module.__getattr__(name + "_vertex_" + str(vertex)).detach()
                 vertex_list.append(val)

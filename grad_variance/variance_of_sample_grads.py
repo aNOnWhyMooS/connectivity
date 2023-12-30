@@ -44,20 +44,30 @@ dataset = dataset["validation"]
 dataset = dataset.shuffle(seed=42).select(list(range(256)))
 
 tokenizer = BertTokenizer.from_pretrained(model_repo)
-dataset = dataset.map(lambda e: tokenizer(e['question1'], e['question2'],
-                                truncation=True, padding='max_length',
-                                return_tensors='pt',),)
+dataset = dataset.map(
+    lambda e: tokenizer(
+        e["question1"],
+        e["question2"],
+        truncation=True,
+        padding="max_length",
+        return_tensors="pt",
+    ),
+)
 
-dataset.set_format(type='torch', columns=['input_ids', 'attention_mask',
-                                          'token_type_ids', 'label'])
+dataset.set_format(
+    type="torch", columns=["input_ids", "attention_mask", "token_type_ids", "label"]
+)
 
 from torch.utils.data import DataLoader
 
-dataset = dataset.map(lambda e1, e2, e3: {'input_ids': e1[0],
-                                          'attention_mask': e2[0],
-                                          'token_type_ids': e3[0]},
-                          input_columns=['input_ids', 'attention_mask',
-                                         'token_type_ids'])
+dataset = dataset.map(
+    lambda e1, e2, e3: {
+        "input_ids": e1[0],
+        "attention_mask": e2[0],
+        "token_type_ids": e3[0],
+    },
+    input_columns=["input_ids", "attention_mask", "token_type_ids"],
+)
 
 loader = DataLoader(dataset, batch_size=1)
 
@@ -68,20 +78,23 @@ print("Length of loader:", len(loader))
 
 """### Calculate Cosine similarities"""
 
+
 def cosine_sim(grads, model):
     dot_prod, norm1, norm2 = 0, 0, 0
     for name, param in model.named_parameters():
         if param.grad is not None:
             grads2 = param.grad.detach()
-            dot_prod += torch.sum(grads[name]*grads2)
-            norm1 += torch.sum(grads[name]*grads[name])
-            norm2 += torch.sum(grads2*grads2)
-    return (dot_prod/torch.sqrt(norm1*norm2)).cpu().item()
+            dot_prod += torch.sum(grads[name] * grads2)
+            norm1 += torch.sum(grads[name] * grads[name])
+            norm2 += torch.sum(grads2 * grads2)
+    return (dot_prod / torch.sqrt(norm1 * norm2)).cpu().item()
+
 
 def shift_data(inp):
     for k, v in inp.items():
         inp[k] = v.to(device)
     return inp
+
 
 def get_cosine_sims(model):
     cosine_sims = [[-1000 for _ in range(len(loader))] for _ in range(len(loader))]
@@ -90,7 +103,7 @@ def get_cosine_sims(model):
 
     for j in range(len(loader)):
         for i, inp in enumerate(loader):
-            if i==j:
+            if i == j:
                 inp["labels"] = inp.pop("label")
                 inp = shift_data(inp)
                 out = model(**inp)
@@ -100,27 +113,32 @@ def get_cosine_sims(model):
                         gradients[name] = param.grad.detach().clone()
                 model.zero_grad()
 
-            elif i>j:
-                #print(tokenizer.decode(inp["input_ids"][0], skip_special_tokens=True))
-                #print(inp["label"])
+            elif i > j:
+                # print(tokenizer.decode(inp["input_ids"][0], skip_special_tokens=True))
+                # print(inp["label"])
                 inp["labels"] = inp.pop("label")
                 inp = shift_data(inp)
                 out = model(**inp)
                 out.loss.backward()
-                #print(out.logits)
-                #print(out.loss)
+                # print(out.logits)
+                # print(out.loss)
                 cosine_sims[i][j] = cosine_sims[j][i] = cosine_sim(gradients, model)
-                print(f"Cosine Similarities of model {i} with model {j}: {cosine_sims[i][j]}")
+                print(
+                    f"Cosine Similarities of model {i} with model {j}: {cosine_sims[i][j]}"
+                )
 
     for i in range(len(loader)):
-        cosine_sims[i][i]=0
+        cosine_sims[i][i] = 0
     return cosine_sims
+
 
 import pickle
 
 ckpt_wise_cosine_sims = {}
 steps = int(sys.argv[3])
-model = BertForSequenceClassification.from_pretrained(model_repo, revision=ckpts[steps]).to(device)
+model = BertForSequenceClassification.from_pretrained(
+    model_repo, revision=ckpts[steps]
+).to(device)
 ckpt_wise_cosine_sims[steps] = get_cosine_sims(model)
 
 with open(sys.argv[2], "wb") as f:
@@ -130,4 +148,5 @@ with open(sys.argv[2], "wb") as f:
 """### Delete the model repo, to free up space"""
 
 import shutil
+
 shutil.rmtree(local_dir)

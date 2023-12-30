@@ -18,11 +18,15 @@ import constellations.legacy.common_utils as cu
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def perturb_pars(w1: OrderedDict[str, torch.Tensor], 
-                 w2: OrderedDict[str, torch.Tensor], 
-                 coeff1: float, coeff2: float,
-                 model: nn.Module) -> None:
-    """Linearly combines weights w1 and w2 as coeff1*w1 and coeff2*w2 and perturbs 
+
+def perturb_pars(
+    w1: OrderedDict[str, torch.Tensor],
+    w2: OrderedDict[str, torch.Tensor],
+    coeff1: float,
+    coeff2: float,
+    model: nn.Module,
+) -> None:
+    """Linearly combines weights w1 and w2 as coeff1*w1 and coeff2*w2 and perturbs
     parameters of provided model, in this direction.
     Args:
         w1:     State dict of first basis vector(no buffers).
@@ -33,119 +37,144 @@ def perturb_pars(w1: OrderedDict[str, torch.Tensor],
     """
     linear_comb = collections.OrderedDict()
     for (k1, v1), (k2, v2) in zip(w1.items(), w2.items()):
-        if k1!=k2:
-            raise ValueError(f"Mis-matched keys {k1} and {k2} encountered while \
-                               forming linear combination of weights.")
-        linear_comb[k1] = coeff1*v1+coeff2*v2
-    
+        if k1 != k2:
+            raise ValueError(
+                f"Mis-matched keys {k1} and {k2} encountered while \
+                               forming linear combination of weights."
+            )
+        linear_comb[k1] = coeff1 * v1 + coeff2 * v2
+
     new_state_dict = model.state_dict()
     for k, v in linear_comb.items():
         new_state_dict[k] += v.to(new_state_dict[k].device)
-    
+
     model.load_state_dict(new_state_dict)
     model.to(device)
+
 
 def main(args):
     mnli_label_dict = {"contradiction": 0, "entailment": 1, "neutral": 2}
     hans_label_dict = {"entailment": 0, "non-entailment": 1}
 
-    if args.dataset=="hans" and args.all_data:
-        input_target_loader = cu.get_loader(args, mnli_label_dict, 
-                                            heuristic_wise=["lexical_overlap", 
-                                                            "constituent", "subsequence"],
-                                            onlyNonEntailing=False)
+    if args.dataset == "hans" and args.all_data:
+        input_target_loader = cu.get_loader(
+            args,
+            mnli_label_dict,
+            heuristic_wise=["lexical_overlap", "constituent", "subsequence"],
+            onlyNonEntailing=False,
+        )
     else:
         input_target_loader = cu.get_loader(args, mnli_label_dict)
-    
-    ce_loss = nn.CrossEntropyLoss()
-    
-    mnli_logits_to_hans = cu.get_logits_converter(mnli_label_dict, hans_label_dict)
-            
-    logit_converter = mnli_logits_to_hans if args.dataset=="hans" else None
-    
-    criterion = cu.get_criterion_fn(ce_loss, logit_converter)
-    pred_fn   = cu.get_pred_fn(pred_type="prob" if args.metric=="ECE" else "argmax",
-                              logit_converter_fn = logit_converter)
 
-    if args.metric=="accuracy":
+    ce_loss = nn.CrossEntropyLoss()
+
+    mnli_logits_to_hans = cu.get_logits_converter(mnli_label_dict, hans_label_dict)
+
+    logit_converter = mnli_logits_to_hans if args.dataset == "hans" else None
+
+    criterion = cu.get_criterion_fn(ce_loss, logit_converter)
+    pred_fn = cu.get_pred_fn(
+        pred_type="prob" if args.metric == "ECE" else "argmax",
+        logit_converter_fn=logit_converter,
+    )
+
+    if args.metric == "accuracy":
         metric = load_metric("accuracy")
-    elif args.metric=="ECE":
+    elif args.metric == "ECE":
         metric = load_metric("ECE", n_bins=10)
-    
-    w1 = cu.get_sequence_classification_model(
-        args.base_models_prefix + str(args.base1)
-    )
-    
-    w2 = cu.get_sequence_classification_model(
-        args.base_models_prefix + str(args.base2)
-    )
-    
+
+    w1 = cu.get_sequence_classification_model(args.base_models_prefix + str(args.base1))
+
+    w2 = cu.get_sequence_classification_model(args.base_models_prefix + str(args.base2))
+
     anchor = cu.get_sequence_classification_model(
         args.base_models_prefix + str(args.anchor)
     )
-    
-    basis1, basis2, removed_comp_len, swapped_basis, perp_scaling_factor = get_sd_basis(anchor, w1, w2)
+
+    basis1, basis2, removed_comp_len, swapped_basis, perp_scaling_factor = get_sd_basis(
+        anchor, w1, w2
+    )
     del w1, w2
 
-    locations = {"w0" : (0,0), 
-                 "w1" : (1,0) if not swapped_basis else (removed_comp_len, perp_scaling_factor),
-                 "w2" : (1,0) if swapped_basis else (removed_comp_len, perp_scaling_factor) }
-    
+    locations = {
+        "w0": (0, 0),
+        "w1": (1, 0) if not swapped_basis else (removed_comp_len, perp_scaling_factor),
+        "w2": (1, 0) if swapped_basis else (removed_comp_len, perp_scaling_factor),
+    }
+
     print("Basis-1 model location:", locations["w1"])
     print("Basis-2 model location:", locations["w2"])
 
-    n_pts = args.n_pts_per_unit*(args.range - (-args.range))
+    n_pts = args.n_pts_per_unit * (args.range - (-args.range))
     loss_surf = torch.zeros(n_pts, n_pts)
     acc_surf = torch.zeros(n_pts, n_pts)
     ece_surf = torch.zeros(n_pts, n_pts)
     vec = np.linspace(-args.range, args.range, n_pts)
     coef_samples = vec.tolist()
-    
+
     original_state = copy.deepcopy(anchor.state_dict())
-    
+
     for i, coeff1 in enumerate(coef_samples):
         for j, coeff2 in enumerate(coef_samples):
             perturb_pars(basis1, basis2, coeff1, coeff2, anchor)
-            metrics = util.eval(input_target_loader, anchor, 
-                                criterion, pred_fn, metric)
+            metrics = util.eval(input_target_loader, anchor, criterion, pred_fn, metric)
             loss_surf[i, j] = metrics["loss"]
-            acc_surf[i, j] =  metrics["accuracy"]
-            
-            print(f"Metrics for coefficients ({coeff1}, {coeff2}) \
-                    for the given bases:", metrics)
-            
-            if args.metric=="ECE":
+            acc_surf[i, j] = metrics["accuracy"]
+
+            print(
+                f"Metrics for coefficients ({coeff1}, {coeff2}) \
+                    for the given bases:",
+                metrics,
+            )
+
+            if args.metric == "ECE":
                 ece_surf[i, j] = metrics["ECE"]
-            
+
             anchor.load_state_dict(original_state)
-    
+
     X, Y = np.meshgrid(vec, vec)
-    loss_surface = (X, perp_scaling_factor*Y, loss_surf)
-    acc_surface = (X, perp_scaling_factor*Y, acc_surf)
-    if args.metric=="ECE":
-        ece_surface = (X, perp_scaling_factor*Y, ece_surf)
-    
-    print('Surfaces computed...')
-    all_data = "AllData_" if (args.all_data and args.dataset=="hans") else ""
-    save_name = 'saved-outputs/'+ all_data + f"{args.dataset}_{args.split}_{args.anchor}_{args.base1}_{args.base2}_{args.range}"
-    pickle.dump((loss_surface, locations), open(save_name + '_loss_surface.pkl', 'wb'))
-    surfaces.plot_loss_surface(loss_surface, save_name + '_loss_surface_2d', three_d=False, locations=locations)
-    surfaces.plot_loss_surface(loss_surface, save_name + '_loss_surface_3d')
-    pickle.dump((acc_surface, locations), open(save_name + '_acc_surface.pkl', 'wb'))
-    surfaces.plot_loss_surface(acc_surface, save_name + '_acc_surface_2d', three_d=False, locations=locations)
-    surfaces.plot_loss_surface(acc_surface, save_name + '_acc_surface_3d')
-    
-    if args.metric=="ECE":
-        pickle.dump((ece_surface, locations), open(save_name + '_ece_surface.pkl', 'wb'))
-        surfaces.plot_loss_surface(ece_surface, save_name + '_ece_surface_2d', three_d=False, locations=locations)
-        surfaces.plot_loss_surface(ece_surface, save_name + '_ece_surface_3d')
-    
-    print('Surfaces saved')
+    loss_surface = (X, perp_scaling_factor * Y, loss_surf)
+    acc_surface = (X, perp_scaling_factor * Y, acc_surf)
+    if args.metric == "ECE":
+        ece_surface = (X, perp_scaling_factor * Y, ece_surf)
 
-    
-if __name__ == '__main__':
+    print("Surfaces computed...")
+    all_data = "AllData_" if (args.all_data and args.dataset == "hans") else ""
+    save_name = (
+        "saved-outputs/"
+        + all_data
+        + f"{args.dataset}_{args.split}_{args.anchor}_{args.base1}_{args.base2}_{args.range}"
+    )
+    pickle.dump((loss_surface, locations), open(save_name + "_loss_surface.pkl", "wb"))
+    surfaces.plot_loss_surface(
+        loss_surface, save_name + "_loss_surface_2d", three_d=False, locations=locations
+    )
+    surfaces.plot_loss_surface(loss_surface, save_name + "_loss_surface_3d")
+    pickle.dump((acc_surface, locations), open(save_name + "_acc_surface.pkl", "wb"))
+    surfaces.plot_loss_surface(
+        acc_surface, save_name + "_acc_surface_2d", three_d=False, locations=locations
+    )
+    surfaces.plot_loss_surface(acc_surface, save_name + "_acc_surface_3d")
 
-    parser = argparse.ArgumentParser(description="2-D interpolations on a plane made of 3 models.")
+    if args.metric == "ECE":
+        pickle.dump(
+            (ece_surface, locations), open(save_name + "_ece_surface.pkl", "wb")
+        )
+        surfaces.plot_loss_surface(
+            ece_surface,
+            save_name + "_ece_surface_2d",
+            three_d=False,
+            locations=locations,
+        )
+        surfaces.plot_loss_surface(ece_surface, save_name + "_ece_surface_3d")
+
+    print("Surfaces saved")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="2-D interpolations on a plane made of 3 models."
+    )
 
     parser.add_argument(
         "--base_models_prefix",
@@ -153,7 +182,7 @@ if __name__ == '__main__':
         required=True,
         help="Common prefix of models to be loaded(e.g. 'connectivity/feather_berts_')",
     )
-    
+
     parser.add_argument(
         "--base_model",
         type=str,
@@ -208,7 +237,7 @@ if __name__ == '__main__':
         type=int,
         default=128,
         help="input batch size (default: 128)",
-    )    
+    )
 
     parser.add_argument(
         "--dataset",

@@ -6,10 +6,14 @@ from transformers.modeling_outputs import SequenceClassifierOutput as SCO
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def linear_comb(w1: OrderedDict[str, torch.Tensor],
-                w2: OrderedDict[str, torch.Tensor],
-                coeff1: float, coeff2: float,
-                model: nn.Module) -> None:
+
+def linear_comb(
+    w1: OrderedDict[str, torch.Tensor],
+    w2: OrderedDict[str, torch.Tensor],
+    coeff1: float,
+    coeff2: float,
+    model: nn.Module,
+) -> None:
     """Linearly combines weights w1 and w2 as coeff1*w1 and coeff2*w2 and loads
     into provided model.
     Args:
@@ -23,17 +27,22 @@ def linear_comb(w1: OrderedDict[str, torch.Tensor],
     buffers = [name for (name, _) in model.named_buffers()]
 
     for (k1, v1), (k2, v2) in zip(w1.items(), w2.items()):
-        if k1!=k2:
-            raise ValueError(f"Mis-matched keys {k1} and {k2} encountered while \
-                               forming linear combination of weights.")
+        if k1 != k2:
+            raise ValueError(
+                f"Mis-matched keys {k1} and {k2} encountered while \
+                               forming linear combination of weights."
+            )
         if k1 not in buffers:
-            new_state_dict[k1] = coeff1*v1+coeff2*v2
+            new_state_dict[k1] = coeff1 * v1 + coeff2 * v2
         else:
             new_state_dict[k1] = v1
     model.load_state_dict(new_state_dict)
     model.to(device)
 
-def get_logits_converter(mnli_label_dict: Dict[str, int], hans_label_dict: Dict[str, int], pool='max') -> Callable:
+
+def get_logits_converter(
+    mnli_label_dict: Dict[str, int], hans_label_dict: Dict[str, int], pool="max"
+) -> Callable:
     """Returns the functions that converts MNLI logits to HANS.
     Static State Maintained:
             mnli_label_dict:  A dictionary specifying which MNLI label is to be represented as which integer.
@@ -64,15 +73,20 @@ def get_logits_converter(mnli_label_dict: Dict[str, int], hans_label_dict: Dict[
         if "format" in model_out and model_out["format"] == "hans_logits":
             return model_out
 
-        contradiction_logits =  model_out["logits"][..., mnli_label_dict["contradiction"]]
+        contradiction_logits = model_out["logits"][
+            ..., mnli_label_dict["contradiction"]
+        ]
         neutral_logits = model_out["logits"][..., mnli_label_dict["neutral"]]
         entailment_logits = model_out["logits"][..., mnli_label_dict["entailment"]]
         hans_logits = torch.zeros_like(model_out["logits"])
         if pool == "max":
-            hans_logits[..., hans_label_dict["non-entailment"]] = torch.max(contradiction_logits,
-                                                                            neutral_logits)
+            hans_logits[..., hans_label_dict["non-entailment"]] = torch.max(
+                contradiction_logits, neutral_logits
+            )
         elif pool == "sum":
-            hans_logits[..., hans_label_dict["non-entailment"]] = contradiction_logits+neutral_logits
+            hans_logits[..., hans_label_dict["non-entailment"]] = (
+                contradiction_logits + neutral_logits
+            )
         else:
             raise ValueError("Unknown pooling {}".format(pool))
         hans_logits[..., hans_label_dict["entailment"]] = entailment_logits
@@ -83,8 +97,11 @@ def get_logits_converter(mnli_label_dict: Dict[str, int], hans_label_dict: Dict[
 
     return mnli_logits_to_hans
 
-def get_criterion_fn(loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
-                     logit_converter_fn: Optional[Callable[[SCO], SCO]]=None,) -> Callable[[SCO, torch.Tensor], torch.Tensor]:
+
+def get_criterion_fn(
+    loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
+    logit_converter_fn: Optional[Callable[[SCO], SCO]] = None,
+) -> Callable[[SCO, torch.Tensor], torch.Tensor]:
     """Returns a criterion to calculate loss for a sequence classification model.
     Args:
         loss_fn:  A function that takes (logits, labels) and returns a loss tensor.
@@ -95,6 +112,7 @@ def get_criterion_fn(loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tenso
         A function that takes (model_out, labels) and returns a loss tensor, possibly with an
         additional logit conversion step, if logit_conversion_fn is provided.
     """
+
     def simple_criterion(model_out: SCO, target: torch.Tensor) -> torch.Tensor:
         return loss_fn(model_out["logits"], target)
 
@@ -107,8 +125,11 @@ def get_criterion_fn(loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tenso
 
     return converted_criterion
 
-def get_pred_fn(pred_type: str = "argmax",
-                logit_converter_fn: Optional[Callable[[SCO], SCO]] = None,) -> Callable[[SCO], torch.Tensor]:
+
+def get_pred_fn(
+    pred_type: str = "argmax",
+    logit_converter_fn: Optional[Callable[[SCO], SCO]] = None,
+) -> Callable[[SCO], torch.Tensor]:
     """Returns a prediction function for sequence classification model.
     Args:
         pred_type:          "max":    Return max logit values.
@@ -122,8 +143,10 @@ def get_pred_fn(pred_type: str = "argmax",
     """
     supported_pred_types = ["max", "argmax", "prob"]
     if pred_type not in supported_pred_types:
-        raise NotImplementedError(f"Prediction function for doing {pred_type} type predictions not implemented.\
-                                    Choose from: {supported_pred_types}")
+        raise NotImplementedError(
+            f"Prediction function for doing {pred_type} type predictions not implemented.\
+                                    Choose from: {supported_pred_types}"
+        )
 
     def simple_pred(model_out: SCO) -> torch.Tensor:
         if pred_type == "argmax":

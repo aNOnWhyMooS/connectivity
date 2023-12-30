@@ -33,47 +33,77 @@ tokenizer = BertTokenizer.from_pretrained(model_repo)
 from datasets import load_dataset, concatenate_datasets
 from torch.utils.data import DataLoader
 
+
 def get_qqp_data():
     dataset = load_dataset("glue", "qqp")
     dataset = dataset["validation"]
     datasets = []
     for i in range(len(dataset.features["label"].names)):
-        datasets.append(dataset.shuffle(seed=42).filter(lambda e: e["label"]==i).select(list(range(512))))
+        datasets.append(
+            dataset.shuffle(seed=42)
+            .filter(lambda e: e["label"] == i)
+            .select(list(range(512)))
+        )
     dataset = concatenate_datasets(datasets)
     return dataset
 
+
 def get_paws_data():
-    dataset = load_dataset("csv", data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"}, delimiter="\t")["dev_and_test"]
-    dataset = dataset.rename_columns({"sentence1": "question1", "sentence2": "question2"})
+    dataset = load_dataset(
+        "csv",
+        data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"},
+        delimiter="\t",
+    )["dev_and_test"]
+    dataset = dataset.rename_columns(
+        {"sentence1": "question1", "sentence2": "question2"}
+    )
     return dataset
 
+
 def tokenize_dataset(dataset):
-    dataset = dataset.map(lambda e: tokenizer(e['question1'], e['question2'],
-                                    truncation=True, padding='max_length',
-                                    return_tensors='pt',),)
+    dataset = dataset.map(
+        lambda e: tokenizer(
+            e["question1"],
+            e["question2"],
+            truncation=True,
+            padding="max_length",
+            return_tensors="pt",
+        ),
+    )
 
-    dataset.set_format(type='torch', columns=['input_ids', 'attention_mask',
-                                            'token_type_ids', 'label'])
+    dataset.set_format(
+        type="torch", columns=["input_ids", "attention_mask", "token_type_ids", "label"]
+    )
 
-    dataset = dataset.map(lambda e1, e2, e3: {'input_ids': e1[0],
-                                            'attention_mask': e2[0],
-                                            'token_type_ids': e3[0]},
-                            input_columns=['input_ids', 'attention_mask',
-                                            'token_type_ids'])
+    dataset = dataset.map(
+        lambda e1, e2, e3: {
+            "input_ids": e1[0],
+            "attention_mask": e2[0],
+            "token_type_ids": e3[0],
+        },
+        input_columns=["input_ids", "attention_mask", "token_type_ids"],
+    )
 
-    loader = DataLoader(dataset, batch_size=(4 if device==torch.device("cpu") else 32))
+    loader = DataLoader(
+        dataset, batch_size=(4 if device == torch.device("cpu") else 32)
+    )
     return loader
 
-loaders = {"qqp" : tokenize_dataset(get_qqp_data()),
-           "paws": tokenize_dataset(get_paws_data())}
+
+loaders = {
+    "qqp": tokenize_dataset(get_qqp_data()),
+    "paws": tokenize_dataset(get_paws_data()),
+}
 
 
 """### Calculate Embeddings"""
+
 
 def shift_data(inp):
     for k, v in inp.items():
         inp[k] = v.to(device)
     return inp
+
 
 def calc_embeddings(model, loader):
     embeddings = {}
@@ -84,18 +114,22 @@ def calc_embeddings(model, loader):
         with torch.no_grad():
             out = model(**batch)
         for hs, input_ids in zip(out.last_hidden_state, batch["input_ids"]):
-            embeddings[tokenizer.decode(input_ids[input_ids!=tokenizer.pad_token_id])] = hs.cpu()
+            embeddings[
+                tokenizer.decode(input_ids[input_ids != tokenizer.pad_token_id])
+            ] = hs.cpu()
     return embeddings
+
 
 import pickle
 
 steps = int(sys.argv[3])
 model = BertModel.from_pretrained(model_repo, revision=ckpts[steps]).to(device)
-embeddings = {k : calc_embeddings(model, v) for k,v in loaders.items()}
+embeddings = {k: calc_embeddings(model, v) for k, v in loaders.items()}
 
 with open(sys.argv[2], "wb") as f:
     pickle.dump(embeddings, f)
 
 """### Delete the model repo, to free up space"""
 import shutil
+
 shutil.rmtree(local_dir)

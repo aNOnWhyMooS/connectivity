@@ -12,12 +12,23 @@ from transformers import BertTokenizer
 seed = sys.argv[1]
 steps = sys.argv[2]
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-paws_data = load_dataset("csv", data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"}, delimiter="\t")
+paws_data = load_dataset(
+    "csv", data_files={"dev_and_test": "../paws_final/dev_and_test.tsv"}, delimiter="\t"
+)
 paws_data_to_labels = {}
 for sample in paws_data["dev_and_test"]:
-    ids = tokenizer(sample["sentence1"], sample["sentence2"], truncation=True, padding="max_length",return_tensors="pt")["input_ids"][0]
-    paws_data_to_labels[tokenizer.decode(ids[ids!=tokenizer.pad_token_id])] = sample["label"]
+    ids = tokenizer(
+        sample["sentence1"],
+        sample["sentence2"],
+        truncation=True,
+        padding="max_length",
+        return_tensors="pt",
+    )["input_ids"][0]
+    paws_data_to_labels[tokenizer.decode(ids[ids != tokenizer.pad_token_id])] = sample[
+        "label"
+    ]
 paws_data = paws_data_to_labels
+
 
 def load_paws_data(pkl_file):
     with open(pkl_file, "rb") as f:
@@ -30,11 +41,13 @@ def load_paws_data(pkl_file):
         Ys.append(paws_data[k])
     return Xs, Ys
 
+
 def get_f1(Xs, Ys):
-    clf = make_pipeline(StandardScaler(), svm.SVC(gamma='auto', kernel="linear"))
+    clf = make_pipeline(StandardScaler(), svm.SVC(gamma="auto", kernel="linear"))
     clf.fit(np.array(Xs), np.array(Ys))
     Ypred = clf.predict(Xs)
     return f1_score(Ys, Ypred), precision_recall_fscore_support(Ys, Ypred)
+
 
 pkl_file = f"../extract_repr/reduced/qqp_paws_embeds_{seed}_{steps}.pkl"
 f1, other_scores = get_f1(*load_paws_data(pkl_file))

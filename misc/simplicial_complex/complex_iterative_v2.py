@@ -17,60 +17,73 @@ from constellations.simplexes.models.orig_basic_simplex import SimplicialComplex
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def main(args):
-    first_model_name = args.base_models_prefix.strip('/').split('/')[-1]
+    first_model_name = args.base_models_prefix.strip("/").split("/")[-1]
     savedir = "./saved-outputs/model" + first_model_name + "/"
-    print('Preparing directory %s' % savedir)
+    print("Preparing directory %s" % savedir)
     os.makedirs(savedir, exist_ok=True)
-    with open(os.path.join(savedir, 'base_command.sh'), 'w') as f:
-        f.write(' '.join(sys.argv))
-        f.write('\n')
-    
+    with open(os.path.join(savedir, "base_command.sh"), "w") as f:
+        f.write(" ".join(sys.argv))
+        f.write("\n")
+
     mnli_label_dict = {"contradiction": 0, "entailment": 1, "neutral": 2}
     hans_label_dict = {"entailment": 0, "non-entailment": 1}
 
-    trainloaders, testloader = cu.get_train_test_loaders(args, mnli_label_dict, 
-                                                         heuristic_wise=["lexical_overlap", 
-                                                         "constituent", "subsequence"],
-                                                         onlyNonEntailing=False)
+    trainloaders, testloader = cu.get_train_test_loaders(
+        args,
+        mnli_label_dict,
+        heuristic_wise=["lexical_overlap", "constituent", "subsequence"],
+        onlyNonEntailing=False,
+    )
     ce_loss = nn.CrossEntropyLoss()
-    
+
     mnli_logits_to_hans = cu.get_logits_converter(mnli_label_dict, hans_label_dict)
-    
-    logit_converter = mnli_logits_to_hans if args.dataset=="hans" else None
-    
+
+    logit_converter = mnli_logits_to_hans if args.dataset == "hans" else None
+
     criterion = cu.get_criterion_fn(ce_loss, logit_converter)
-    pred_fn   = cu.get_pred_fn(logit_converter_fn = logit_converter)
+    pred_fn = cu.get_pred_fn(logit_converter_fn=logit_converter)
 
     metric = load_metric("accuracy")
 
-    model_ids = args.indices.split(',')
+    model_ids = args.indices.split(",")
     # all_base_models = []
     for ii, id in enumerate(model_ids):
         model_path = args.base_models_prefix + id
         model = cu.get_sequence_classification_model(model_path)
         # all_base_models.append(model)
         if ii == 0:
-            simplicial_complex = SimplicialComplex(model, num_vertices=1,
-                                                   fixed_points=[True])
+            simplicial_complex = SimplicialComplex(
+                model, num_vertices=1, fixed_points=[True]
+            )
         else:
             simplicial_complex.add_base_vertex(model)
-        
+
         del model
-    
+
     simplicial_complex = simplicial_complex.to(device)
 
-    columns = ['vert', 'ep', 'lr', 'tr_loss', 
-                   'tr_acc', 'te_loss', 'te_acc', 'time', 'volume']
+    columns = [
+        "vert",
+        "ep",
+        "lr",
+        "tr_loss",
+        "tr_acc",
+        "te_loss",
+        "te_acc",
+        "time",
+        "volume",
+    ]
     num_base_vertices = simplicial_complex.num_vertices
     total_sub_epochs = 0
 
     ## add connecting points and train ##
-    
+
     for epoch in range(args.epochs):
         for sub_epoch in range(args.break_epochs):
-            if total_sub_epochs%args.sub_epochs_per_vertex==0:
-                if simplicial_complex.num_vertices==num_base_vertices+args.n_conn:
+            if total_sub_epochs % args.sub_epochs_per_vertex == 0:
+                if simplicial_complex.num_vertices == num_base_vertices + args.n_conn:
                     break
                 simplicial_complex.add_conn_vertex()
                 # Current keeping ```linking```` as default ^
@@ -79,16 +92,16 @@ def main(args):
                 optimizer = torch.optim.Adam(
                     simplicial_complex.parameters(),
                     lr=args.lr_init,
-                    weight_decay=args.wd
+                    weight_decay=args.wd,
                 )
-                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 
-                                                                    T_max=args.sub_epochs_per_vertex)
-            
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    optimizer, T_max=args.sub_epochs_per_vertex
+                )
 
             time_ep = time.time()
             train_res = simp_utils.train_transformer_epoch(
-                trainloaders[sub_epoch], 
-                simplicial_complex, 
+                trainloaders[sub_epoch],
+                simplicial_complex,
                 criterion,
                 optimizer,
                 args.n_sample,
@@ -99,40 +112,52 @@ def main(args):
             )
 
             eval_ep = total_sub_epochs % args.eval_freq == args.eval_freq - 1
-            
+
             if eval_ep:
-                test_res = simp_utils.eval(testloader, simplicial_complex, 
-                                           criterion, pred_fn, metric)
+                test_res = simp_utils.eval(
+                    testloader, simplicial_complex, criterion, pred_fn, metric
+                )
             else:
-                test_res = {'loss': None, 'accuracy': None}
+                test_res = {"loss": None, "accuracy": None}
 
             time_ep = time.time() - time_ep
 
-            lr = optimizer.param_groups[0]['lr']
+            lr = optimizer.param_groups[0]["lr"]
             scheduler.step()
 
-            values = [simplicial_complex.num_vertices, total_sub_epochs + 1, lr, 
-                      train_res['loss'], train_res['accuracy'], 
-                      test_res['loss'], test_res['accuracy'], time_ep, 
-                      simplicial_complex.total_volume().item()]
+            values = [
+                simplicial_complex.num_vertices,
+                total_sub_epochs + 1,
+                lr,
+                train_res["loss"],
+                train_res["accuracy"],
+                test_res["loss"],
+                test_res["accuracy"],
+                time_ep,
+                simplicial_complex.total_volume().item(),
+            ]
 
-            table = tabulate.tabulate([values], columns, 
-                                      tablefmt='simple',)
+            table = tabulate.tabulate(
+                [values],
+                columns,
+                tablefmt="simple",
+            )
             if total_sub_epochs % 40 == 0:
-                table = table.split('\n')
-                table = '\n'.join([table[1]] + table)
+                table = table.split("\n")
+                table = "\n".join([table[1]] + table)
             else:
-                table = table.split('\n')[2]
-            
+                table = table.split("\n")[2]
+
             total_sub_epochs += 1
             print(table, flush=True)
 
-    save_file_prefix = first_model_name + "_lr_" + str(args.lr_init) + "complex_simplex_v"
+    save_file_prefix = (
+        first_model_name + "_lr_" + str(args.lr_init) + "complex_simplex_v"
+    )
     simplicial_complex.save_params(save_file_prefix)
-    
-    
-if __name__ == '__main__':
 
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="simplicial complex")
 
     parser.add_argument(
@@ -177,7 +202,7 @@ if __name__ == '__main__':
         default=2,
         help="number of connecting vertices for the complex.",
     )
-    
+
     parser.add_argument(
         "--lr_init",
         type=float,
@@ -188,7 +213,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--wd",
         type=float,
-        default=0.,
+        default=0.0,
         help="weight decay",
     )
 
@@ -198,7 +223,7 @@ if __name__ == '__main__':
         default=15,
         help="number of gradient accumulation steps",
     )
-    
+
     parser.add_argument(
         "--n_sample",
         type=int,
@@ -229,7 +254,7 @@ if __name__ == '__main__':
         help="Number of parts to break each epoch into",
     )
 
-    parser.add_argument(		
+    parser.add_argument(
         "--sub_epochs_per_vertex",
         type=int,
         default=1,
@@ -238,9 +263,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.break_epochs*args.epochs < args.sub_epochs_per_vertex:
-        raise ValueError(f"Total number of sub-epochs {args.break_epochs*args.epochs} must be\
+    if args.break_epochs * args.epochs < args.sub_epochs_per_vertex:
+        raise ValueError(
+            f"Total number of sub-epochs {args.break_epochs*args.epochs} must be\
                             greater than or equal to number of sub-epochs per vertex: \
-                            {args.sub_epochs_per_vertex}.")
-        
+                            {args.sub_epochs_per_vertex}."
+        )
+
     main(args)

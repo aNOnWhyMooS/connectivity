@@ -12,12 +12,14 @@ for commit in HfApi().list_repo_commits(model_repo):
     if match_obj is not None:
         ckpts[int(match_obj.group(1))] = commit.commit_id
 
-top_layer = BertForSequenceClassification.from_pretrained(model_repo, revision=ckpts[0]).classifier
+top_layer = BertForSequenceClassification.from_pretrained(
+    model_repo, revision=ckpts[0]
+).classifier
 
 with torch.no_grad():
     l2_norm = torch.norm(top_layer.weight.data)
     l1_norm = torch.norm(top_layer.weight.data, p=1)
-    ratio = l2_norm/l1_norm
+    ratio = l2_norm / l1_norm
     bias_l2_norm = torch.norm(top_layer.bias.data)
     bias_l1_norm = torch.norm(top_layer.bias.data, p=1)
 
@@ -29,6 +31,7 @@ print(f"L2 Norm of bias: {bias_l2_norm.item()}")
 print(f"L1 Norm of bias: {bias_l1_norm.item()}")
 
 import shutil
+
 shutil.rmtree(local_dir)
 
 # import re
