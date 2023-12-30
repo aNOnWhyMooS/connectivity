@@ -183,7 +183,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.paws_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "paws_final"
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "paws_final",
     )
 
     if args.job_id is not None:
@@ -209,6 +210,8 @@ if __name__ == "__main__":
         assert len(ms_pairs) == 1
         args.model, args.step = ms_pairs[0]
 
-    print(f'Evaluating model: {args.model}@{args.step} steps on data: ({args.dataset}, {args.split})')
+    print(
+        f"Evaluating model: {args.model}@{args.step} steps on data: ({args.dataset}, {args.split})"
+    )
     args.from_model_type = get_model_type(args.model)
     main(args)
