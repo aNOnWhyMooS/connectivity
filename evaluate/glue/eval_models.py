@@ -48,9 +48,9 @@ def main(args):
     hans_label_dict = {"entailment": 0, "non-entailment": 1}
 
     try:
-        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        tokenizer = AutoTokenizer.from_pretrained(args.model, model_max_length=128)
     except:
-        tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+        tokenizer = AutoTokenizer.from_pretrained(args.base_model, model_max_length=128)
 
     if args.dataset == "hans" and args.all_data:
         input_target_loader = get_loader(
