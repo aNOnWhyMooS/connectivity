@@ -28,13 +28,16 @@ def get_all_model_step_pairs(args):
             for model in models:
                 steps = get_all_steps(model)
                 ms_pairs += [(model, step) for step in steps]
-            return ms_pairs
-        models = get_all_models(args.model, args.step)
-        return [(model, args.step) for model in models]
-    if args.step == "all":
+        else:
+            models = get_all_models(args.model, args.step)
+            ms_pairs = [(model, args.step) for model in models]
+    elif args.step == "all":
         steps = get_all_steps(args.model)
-        return [(args.model, step) for step in steps]
-    return [(args.model, args.step)]
+        ms_pairs = [(args.model, step) for step in steps]
+    else:
+        ms_pairs = [(args.model, args.step)]
+
+    return [(*p, i) for p in ms_pairs for i in range(args.n_parts)]
 
 
 def main(args):
@@ -59,9 +62,13 @@ def main(args):
             mnli_label_dict,
             heuristic_wise=["lexical_overlap", "constituent", "subsequence"],
             onlyNonEntailing=False,
+            n_parts=args.n_parts,
+            index=args.index,
         )
     else:
-        input_target_loader = get_loader(args, tokenizer, mnli_label_dict)
+        input_target_loader = get_loader(
+            args, tokenizer, mnli_label_dict, n_parts=args.n_parts, index=args.index
+        )
 
     mnli_logits_to_hans = get_logits_converter(mnli_label_dict, hans_label_dict)
 
@@ -180,6 +187,15 @@ if __name__ == "__main__":
         "which exact model to evaluate in the current job.",
     )
 
+    parser.add_argument(
+        "--n_parts",
+        required=False,
+        type=int,
+        default=1,
+        help="If specified, dataset will be split into these many parts and "
+        "each part will be evaluated in separate job.",
+    )
+
     args = parser.parse_args()
 
     args.paws_data_dir = os.path.join(
@@ -188,12 +204,13 @@ if __name__ == "__main__":
     )
 
     if args.job_id is not None:
-        args.model, args.step = get_all_model_step_pairs(args)[args.job_id]
+        args.model, args.step, args.index = get_all_model_step_pairs(args)[args.job_id]
         suffix = args.save_file.split(".")[-1]
         prefix = (
             ".".join(args.save_file.split(".")[:-1])
             + f"_{args.dataset}_{args.split}"
             + f'_{args.model.split("/")[-1]}@{args.step}'
+            + f"_{args.index}of{args.n_parts}"
         )
 
         already_completed = glob.glob(f"{prefix}_*.{suffix}")
@@ -208,7 +225,7 @@ if __name__ == "__main__":
     else:
         ms_pairs = get_all_model_step_pairs(args)
         assert len(ms_pairs) == 1
-        args.model, args.step = ms_pairs[0]
+        args.model, args.step, args.index = ms_pairs[0]
 
     print(
         f"Evaluating model: {args.model}@{args.step} steps on data: ({args.dataset}, {args.split})"
