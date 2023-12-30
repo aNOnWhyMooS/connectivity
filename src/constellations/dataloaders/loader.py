@@ -18,8 +18,9 @@ def get_loader(args,
     """Returns loader for MNLI/HANS datasets
     Args:
         args:   Namespace object containing the following fields:
-                [dataset, split, base_model, batch_size, num_exs]. If num_exs is not provided,
-                entire dataset split is returned. Providing all other fields is compulsory.
+                [dataset, split, base_model, batch_size, num_exs, paws_data_dir (optional)]. 
+                If num_exs is not provided, entire dataset split is returned. 
+                Providing all other fields is compulsory.
 
         mnli_label_dict:  A dictionary specifying which MNLI label is to be represented as which integer.
                           Passed to get_mnli_data(), if args.dataset=="mnli"

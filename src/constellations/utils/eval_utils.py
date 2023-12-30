@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
-import json
+import pickle
 
 import torch
 
@@ -63,7 +63,7 @@ def store_outs(loader: Iterable[Tuple[Any, Any]],
                tokenizer: transformers.PreTrainedTokenizer,
                model: nn.Module, 
                pred_fn: Callable,
-               label_dict: Dict[str, int]) -> Dict[str, float]:
+               label_dict: Dict[str, int]):
     """Writes the predictions of provided model, on every sample in loader 
     to write_file(in json format).
     Args:
@@ -78,8 +78,6 @@ def store_outs(loader: Iterable[Tuple[Any, Any]],
                    probabilities of various labels.
         label_dict:Dictionary specifying the integer labels for various classes, will be 
                    stored along the predictions on each sample.
-    Returns:
-        A dictionary containing the loss and metric values of the model on the data in the loader.
     """
     
     evaluated_samples = {}
@@ -100,8 +98,8 @@ def store_outs(loader: Iterable[Tuple[Any, Any]],
                                                  "label": label.item(),
                                                  "sentence": sentence.replace(tokenizer.pad_token, "").strip()})
     
-    with open(write_file, "x") as f:
-        f.write(json.dumps(evaluated_samples, indent=4))
+    with open(write_file, "wb") as f:
+        pickle.dump(evaluated_samples, f)
     
     print(f"Wrote evaluation data to file {write_file}!", flush=True)
     

@@ -1,20 +1,40 @@
-import argparse, os
+import os
+import glob
+import argparse
 
 import torch
 from transformers import AutoTokenizer
+from huggingface_hub import HfApi
 
 import constellations.utils.eval_utils as util
 
 from constellations.model_loaders.modelling_utils import get_logits_converter, get_pred_fn
-from constellations.model_loaders.load_model import get_models_ft_with_prefix, get_sequence_classification_model
+from constellations.model_loaders.load_model import get_sequence_classification_model
 from constellations.dataloaders.loader import get_loader
+from constellations.hf_api_utils import get_all_models, get_all_steps, get_model_type
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+def get_all_model_step_pairs(args):
+    ms_pairs = []
+    if not HfApi().repo_exists(args.model):
+        if args.step == 'all':
+            models = get_all_models(args.model)
+            for model in models:
+                steps = get_all_steps(model)
+                ms_pairs += [(model, step) for step in steps]
+            return ms_pairs
+        models = get_all_models(args.model, args.step)
+        return [(model, args.step) for model in models]
+    if args.step == 'all':
+        steps = get_all_steps(args.model)
+        return [(args.model, step) for step in steps]
+    return [(args.model, args.step)]
+
     
 def main(args):
-    is_feather_bert = "feather" in args.model_name
+    is_feather_bert = "feather" in args.model
 
     if is_feather_bert:
         mnli_label_dict = {"contradiction": 0, "entailment": 1, "neutral": 2}
@@ -24,7 +44,7 @@ def main(args):
     hans_label_dict = {"entailment": 0, "non-entailment": 1}
     
     try:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
     except:
         tokenizer = AutoTokenizer.from_pretrained(args.base_model)
     
@@ -42,12 +62,9 @@ def main(args):
     
     pred_fn   = get_pred_fn(pred_type="prob", logit_converter_fn = logit_converter)
     
-    local_model_dir = (None if args.local_dir_prefix is None
-                       else args.local_dir_prefix + args.model_name[len(args.base_models_prefix):])
-    
-    model = get_sequence_classification_model(args.model_name, num_steps=args.num_steps,
-                                              from_flax=(args.from_model_type=="flax"),
-                                              local_dir=local_model_dir).to(device)
+    model = get_sequence_classification_model(path_or_name=args.model,
+                                              num_steps=args.step,
+                                              from_flax=(args.from_model_type=="flax"),).to(device)
 
     if args.dataset=="cola" or args.dataset=="qqp":
         label_dict = {elem:i for i, elem in 
@@ -57,25 +74,28 @@ def main(args):
     else:
         label_dict = mnli_label_dict if args.dataset=="mnli" else hans_label_dict
     
-    util.store_outs(input_target_loader, args.write_file, tokenizer, model, pred_fn, label_dict)
+    util.store_outs(input_target_loader, args.save_file, tokenizer, model, pred_fn, label_dict)
     
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Evaluate models on HF-Hub.")
 
     parser.add_argument(
-        "--base_models_prefix",
+        "--model",
         type=str,
-        help="Common prefix of models to be loaded(e.g. 'connectivity/bert_ft_qqp-')",
+        required=True,
+        help="Name of model to evaluate as on hf-hub."
+        "Or a substring. All models on hf-hub having this substring will "
+        "be evaluated.",
     )
-    
+
     parser.add_argument(
         "--base_model",
         type=str,
         default="bert-base-uncased",
-        help="Model name to be used to load the tokenizer \
-              for the models, if tokenizer not found in\
-              args.base_models_prefix+args.models[i]. (default: bert-base-uncased)",
+        help="Model name to be used to load the tokenizer "
+             "(default: bert-base-uncased). Will be only used if"
+             "tokenizer can't be loaded from args.model.",
     )
 
     parser.add_argument(
@@ -98,11 +118,11 @@ if __name__ == '__main__':
         type=str,
         default="test",
         choices=["train", "test", "in_domain_dev", "out_domain_dev", "validation", "dev_and_test"],
-        help="data split to use: [train, test](for mnli/hans) or \
-            [train, in_domain_dev, out_domain_dev, validation](for cola) or\
-            [dev_and_test, train](for paws) or [train, validation, test](qqp).\
-            For MNLI, 'test' resolves to 'validation_matched', and for HANS,\
-            'test' resolves to 'validation'. (default: test)",
+        help="data split to use: [train, test](for mnli/hans) or "
+            "[train, in_domain_dev, out_domain_dev, validation](for cola) or "
+            "[dev_and_test, train](for paws) or [train, validation, test](qqp). "
+            "For MNLI, 'test' resolves to 'validation_matched', and for HANS, "
+            "'test' resolves to 'validation'. (default: test)",
     )
     
     parser.add_argument(
@@ -114,75 +134,55 @@ if __name__ == '__main__':
     )
     
     parser.add_argument(
-        "--write_file_prefix",
+        "--save_file",
         type=str,
         required=True,
-        help="Prefix of filename where results are to be written.",
+        help="Name of file where to save the evaluated data,"
+        "using pickle."
     )
 
     parser.add_argument(
-        "--models",
+        "--step",
         type=str,
-        nargs="+",
-        help="The suffixes to add to base_models_prefix to get the models\
-              to evaluate.")
-    
+        help="The step number at which to fetch the model"
+            " specified in args.model."
+            "A commit with this number: ' \d+ steps' in its "
+            "commit message, must be present on the remote. By default, latest "
+            "model will be loaded. Specify step==all to evaluate at all steps.",
+    )
+
     parser.add_argument(
-        "--num_steps",
+        '--job_id',
+        required=False,
         type=int,
-        help="Load model on the remote at these number of steps, \
-            for evaluation. A commit with this number of '\d+ steps' in its\
-            commit message, must be present on the remote.By default, latest\
-            model will be loaded."
+        help="In case args.model is a substring, or args.step==all this tells "
+        "which exact model to evaluate in the current job."
     )
 
-    parser.add_argument(
-        "--paws_data_dir",
-        type=str,
-        default="../../paws_final",
-        help="Data directory having final paws-qqp files(default: ../../paws_final)."
-    )
-    
-    parser.add_argument(
-        "--local_dir_prefix",
-        type=str,
-        help="Local directory prefix to fetch commits from(if repository is\
-            already cloned on local machine). For use with num_steps.\
-            If not specified commit info will be fetched\
-            into dummy directory from huggingface.co/",
-    )
-    
-    parser.add_argument(
-       "--from_model_type",
-       type=str,
-       choices=["pt", "flax", "tf"],
-       help="Type of model on HF hub",
-       default="flax",
-    )
-    
     args = parser.parse_args()
     
-    if args.models is None:
-        suffixes = [elem[len(args.base_models_prefix):] for elem in 
-                        get_models_ft_with_prefix(args.base_models_prefix)]
-
-        print(f"Evaluating models: ", 
-              [args.base_models_prefix+suffix for suffix in suffixes], 
-              flush=True)
-    else:
-        suffixes = args.models
+    args.paws_data_dir = os.path.join(os.path.dirname(
+                                        os.path.dirname(os.path.abspath(__file__))),
+                                      'paws_final')
     
-    for suffix in suffixes:
-        args.model_name = args.base_models_prefix+suffix
-        print(f"Evaluating model {args.model_name}", flush=True)
-        args.write_file = args.write_file_prefix+suffix+".json"
-        if os.path.exists(args.write_file):
-            continue
-        try:
-            main(args)
-        except ValueError as e:
-            if "Unable to find any commit with " in str(e):
-                print(e)
-                continue
-            else:
-                raise e
+    if args.job_id is not None:
+        args.model, args.step = get_all_model_step_pairs(args)[args.job_id]
+        suffix = args.save_file.split('.')[-1]
+        prefix = ('.'.join(args.save_file.split('.')[:-1])
+                  +f'_{args.dataset}_{args.split}'
+                  +f'_{args.model.split("/")[-1]}@{args.step}')
+        
+        already_completed = glob.glob(f'{prefix}_*.{suffix}')
+        
+        if already_completed:
+            print(f'Job already completed with logs at:', already_completed, '. Exitting.')
+            exit(0)
+        
+        args.save_file = f'{prefix}_{args.job_id}.{suffix}'
+    else:
+        ms_pairs = get_all_model_step_pairs(args)
+        assert len(ms_pairs) == 1
+        args.model, args.step = ms_pairs[0]
+    
+    args.from_model_type = get_model_type(args.model)
+    main(args)

@@ -1,83 +1,23 @@
-import re, os
+import os
 import glob
 import pickle
 import argparse
-from typing import Literal, List, Tuple
 
-import time
 import tabulate
 import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_metric
 from transformers import AutoTokenizer
-from huggingface_hub import HfApi
-from requests.exceptions import ConnectionError
 from match_finder import match_params
 
 from constellations.model_loaders.modelling_utils import get_criterion_fn, get_logits_converter, get_pred_fn, linear_comb
-from constellations.model_loaders.load_model import get_sequence_classification_model, get_flax_seq_classification_model, select_revision
+from constellations.model_loaders.load_model import get_sequence_classification_model, get_flax_seq_classification_model
+from constellations.hf_api_utils import get_step_pairs, get_model_type, get_model_pairs
 from constellations.dataloaders.loader import get_loader
 from constellations.utils.eval_utils import eval
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def get_model_type(model: str) -> Literal['flax', 'tf', 'pytorch']:
-    hf_api = HfApi()
-    model_tags = hf_api.model_info(model).tags
-    for e in ['pytorch', 'jax', 'tf']:
-        if e in model_tags:
-            if e=='jax':
-                return 'flax'
-            return e
-    raise AssertionError(f"Can't determine type of model: {model}")
-
-def steps_available(model: str, step: str):
-    try:
-        select_revision(model, step)
-        return True
-    except ValueError as e:
-        if 'Unable to find any commit' in str(e):
-            return False
-        raise e
-
-def get_all_steps(model: str):
-    hf_api = HfApi()
-    all_steps = []
-    for commit in hf_api.list_repo_commits(model):
-        match_obj = re.match(r'Saving weights and logs of step (\d+)', commit.title.strip())
-        if match_obj is None:
-            continue
-        steps = match_obj.group(1)
-        all_steps.append(steps)
-    return all_steps
-
-def get_step_pairs(model: str,) -> List[Tuple[str, str]]:
-    all_steps = get_all_steps(model)
-    return [(s1, s2)
-            for i, s1 in enumerate(all_steps)
-            for j, s2 in enumerate(all_steps)
-            if i<j]
-
-def get_model_pairs(substr: str, step: str) -> List[Tuple[str, str]]:
-    hf_api = HfApi()
-
-    for _ in range(10):
-        try:
-            all_models = hf_api.list_models(search=substr)
-            break
-        except ConnectionError:
-            time.sleep(3)
-        
-    models = [model.id for model in all_models
-              if steps_available(model.id, step)]
-    models = sorted(models)
-
-    print(f'In total interpolating between {len(models)} models: {models}')
-
-    return [(model1, model2)
-            for i, model1 in enumerate(models) 
-            for j, model2 in enumerate(models) if i<j]
 
 def main(args):
     is_feather_bert = (("feather" in args.models[0])
@@ -256,7 +196,8 @@ if __name__ == '__main__':
         required=False,
         type=int,
         help="In case args.models is a substring, this tells "
-        "which exact pair of models to interpolate between."
+        "which exact pair of models to interpolate between. Or when args.steps is all,"
+        " this tells which pairs of steps to interpolate between."
     )
 
     args = parser.parse_args()
@@ -271,7 +212,6 @@ if __name__ == '__main__':
         assert len(args.models.split(',')) == 1
         args.steps = get_step_pairs(args.models)[args.job_id]
         args.models = f'{args.models},{args.models}'
-    
     elif args.steps is None:
         args.steps = (None, None)
     else:
