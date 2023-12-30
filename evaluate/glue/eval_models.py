@@ -209,5 +209,6 @@ if __name__ == "__main__":
         assert len(ms_pairs) == 1
         args.model, args.step = ms_pairs[0]
 
+    print(f'Evaluating model: {args.model}@{args.step} steps on data: ({args.dataset}, {args.split})')
     args.from_model_type = get_model_type(args.model)
     main(args)

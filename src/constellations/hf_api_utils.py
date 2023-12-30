@@ -67,7 +67,7 @@ def get_all_models(substr: str, step: Optional[str] = None) -> List[str]:
     if step is not None:
         models = [model.id for model in all_models if steps_available(model.id, step)]
     else:
-        models = all_models
+        models = [model.id for model in all_models]
 
     models = sorted(models)
 
