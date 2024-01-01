@@ -105,8 +105,8 @@ class ModelArguments:
     use_slow_tokenizer: Optional[bool] = field(
         default=False,
         metadata={
-            "help": "If passed, will use a slow tokenizer (not backed by the 🤗 Tokenizers library).
-        "},
+            "help": "If passed, will use a slow tokenizer (not backed by the 🤗 Tokenizers library)."
+        },
     )
     cache_dir: Optional[str] = field(
         default=None,
