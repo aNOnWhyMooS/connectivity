@@ -775,11 +775,12 @@ def main():
 
     exit_training = False
     epochs = tqdm(range(num_epochs), desc=f"Epoch ... (0/{num_epochs})", position=0)
+    train_metrics = []
+
     for epoch in epochs:
         if exit_training:
             break
         train_start = time.time()
-        train_metrics = []
 
         # Create sampling rng
         rng, input_rng = jax.random.split(rng)
