@@ -36,7 +36,7 @@ python run_flax_glue.py \
         --task_name $4 \
         --max_seq_length 128 \
         --learning_rate 2e-5 \
-        --num_train_epochs 3 \
+        --num_train_epochs 1 \
         --per_device_train_batch_size 32 \
         --per_device_eval_batch_size 512 \
         --eval_steps 1000 --save_steps 1000 --logging_steps 1000\
