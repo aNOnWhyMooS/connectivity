@@ -10,7 +10,7 @@
 #nvidia-smi
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
-OVERLAY_FILE=/scratch/$USER/mode-conn-0/mode-conn-0.ext3:ro
+OVERLAY_FILE=/scratch/$USER/finetune-tf1/finetune-tf1.ext3:ro
 
 BERT_BASE_DIR=/scratch/$USER/uncased_L-12_H-768_A-12
 GLUE_DIR=/scratch/$USER/glue_data
