@@ -9,7 +9,7 @@
 #nvidia-smi
 
 SINGULARITY_IMAGE=/scratch/work/public/singularity/cuda11.1.1-cudnn8-devel-ubuntu20.04.sif
-OVERLAY_FILE=/scratch/$USER/mode-conn-10/mode-conn-10.ext3:ro
+OVERLAY_FILE=/scratch/$USER/finetune-jax/finetune-jax.ext3:ro
 
 singularity exec --nv\
                  --overlay $OVERLAY_FILE $SINGULARITY_IMAGE \
