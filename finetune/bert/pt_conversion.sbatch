@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=finetune_berts
 #SBATCH --open-mode=append
-#SBATCH --output=./sbatch_outs/%A_%a.out
-#SBATCH --error=./sbatch_outs/%A_%a.err
+#SBATCH --output=./sbatch_outs_%A_%a.out
+#SBATCH --error=./sbatch_outs_%A_%a.err
 #SBATCH --nodes=1 --ntasks-per-node=1
 #SBATCH --mem=64G
 #SBATCH --time=22:59:59
