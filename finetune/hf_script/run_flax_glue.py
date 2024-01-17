@@ -32,7 +32,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import datasets
 import numpy as np
-from datasets import load_dataset, load_metric, concatenate_datasets
+from datasets import load_dataset, load_metric
 from tqdm import tqdm
 
 import jax
@@ -496,7 +496,6 @@ def main():
     if data_args.task_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset("glue", data_args.task_name)
-        raw_datasets["train"] = concatenate_datasets([raw_datasets["train"]] * 3)
     else:
         # Loading the dataset from local csv or json file.
         data_files = {}
